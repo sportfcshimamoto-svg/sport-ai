@@ -1,6 +1,7 @@
 // SPORT AI事務局：TM（トレーニングマッチ）タブ
-// 入力 → 画面で確認 → 「TM U○【相手】日付.docx」を書き出す。すべてこのブラウザの中で行う。
-import { TM_GRADES, VENUES, venueOf, PLAYERS, playersText, tmDefaults, tmGradeOf, tmPrepare, tmDocx } from './lib/tm.js';
+// 入力 → 画面で確認 → 「TM U○【相手】日付.pdf」を書き出す。すべてこのブラウザの中で行う。
+import { TM_GRADES, VENUES, venueOf, PLAYERS, playersText, tmDefaults, tmGradeOf, tmPrepare } from './lib/tm.js';
+import { tmPdf } from './lib/tm-pdf.js';
 import { loadImages } from './lib/images.js';
 
 const KEY = 'sport-ai:tm:v1';
@@ -100,13 +101,14 @@ export function renderTM(root, ui) {
         ${p.notes.map((n) => `<p class="tm-note">※　${esc(n)}</p>`).join('')}
         <p>${esc(p.closing)}</p>
       </div>`;
+    const pdfName = p.fileName.replace(/\.docx$/, '.pdf');
     $('#tm-files').innerHTML = bad.length
       ? '<p class="hint">上の「できあがりの確認」の黄色い知らせがなくなったら、ここから書き出せます。</p>'
-      : `<div class="files"><div class="file"><span class="ic">📄</span><span class="nm"><b>TMのお知らせ（Word）</b><small>${esc(p.fileName)}　A4縦・これまでのTMと同じ形</small></span></div></div>
+      : `<div class="files"><div class="file"><span class="ic">📄</span><span class="nm"><b>TMのお知らせ（PDF）</b><small>${esc(pdfName)}　A4縦・これまでのTMと同じ形</small></span></div></div>
         <div class="btn-row"><button class="btn btn-main btn-big" id="tm-dl">⬇ ダウンロード</button></div>
-        <p class="hint">ダウンロードしたファイルは、Wordで開いてそのまま直せます。</p>`;
+        <p class="hint">PDFはスマホでも見た目がくずれません。直したいときは、上の入力を変えて作り直してください。</p>`;
     $('#tm-dl')?.addEventListener('click', async () => {
-      try { ui.download(p.fileName, await tmDocx(S, await loadImages())); } catch (err) { console.error(err); ui.toast('作れませんでした：' + err.message); }
+      try { ui.download(pdfName, await tmPdf(S, await loadImages())); } catch (err) { console.error(err); ui.toast('作れませんでした：' + err.message); }
     });
   }
 
