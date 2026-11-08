@@ -292,15 +292,42 @@ function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.ad
 async function showTab(name) {
   document.querySelectorAll('#tabs [data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
   try { localStorage.setItem(KEY + ':tab', name); } catch { /* なし */ }
-  if (name === 'tm') {
-    const { renderTM } = await import('./tm.js');
-    renderTM($('#app'), { toast, download });
-  } else if (name === 'insta') {
-    const { renderInsta } = await import('./insta.js');
-    renderInsta($('#app'), { toast, download });
-  } else {
-    render();
+  try {
+    if (name === 'tm') {
+      const { renderTM } = await import('./tm.js');
+      renderTM($('#app'), { toast, download });
+    } else if (name === 'insta') {
+      const { renderInsta } = await import('./insta.js');
+      renderInsta($('#app'), { toast, download });
+    } else {
+      render();
+    }
+    try { sessionStorage.removeItem(KEY + ':retry'); } catch { /* なし */ }
+  } catch (err) {
+    tabFailed(name, err);
   }
+}
+
+/**
+ * タブの画面を作れなかったとき。アプリを公開し直した直後は、スマホに残った古いファイルと新しいファイルが
+ * 混ざって読み込めないことがある。自動で1回だけ読み直し、それでもだめなら白紙にせず案内を出す。
+ */
+function tabFailed(name, err) {
+  console.error(err);
+  let retried = true;   // 記録できない環境では、読み直しをくり返さないよう自動では読み直さない
+  try {
+    retried = sessionStorage.getItem(KEY + ':retry') === name;
+    if (!retried) sessionStorage.setItem(KEY + ':retry', name);
+  } catch { /* なし */ }
+  if (!retried) { location.reload(); return; }
+  $('#app').innerHTML = `<section class="card">
+    <h2>この画面を開けませんでした</h2>
+    <p>アプリを新しくした直後は、スマホに古いファイルが残っていて開けないことがあります。入力した内容は消えていません。</p>
+    <p>少し待ってから「もう一度読み込む」を押してください。直らないときは、ブラウザのこのタブを閉じて開き直してください。</p>
+    <div class="btn-row"><button class="btn btn-main btn-big" id="btn-retry">もう一度読み込む</button></div>
+    <p class="hint">${esc(err?.message || err)}</p>
+  </section>`;
+  $('#btn-retry').addEventListener('click', () => location.reload());
 }
 $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b && !b.disabled) showTab(b.dataset.tab); });
 
