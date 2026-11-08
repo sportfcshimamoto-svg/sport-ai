@@ -1,0 +1,161 @@
+/* 色・つくりは SPORT FC ホームページ（sport-fc-shimamoto.jimdofree.com）に合わせています */
+:root {
+  --main: #9a00ff;        /* HPの見出し・ボタンの紫 */
+  --main-dark: #6a0fb8;   /* ボタンを押すときの濃い紫 */
+  --main-deep: #361778;   /* ユニフォームの濃い紫 */
+  --main-soft: #f3eaff;   /* HPの表の見出しのうすい紫 */
+  --yellow: #ffe94a;      /* HPの「めざす選手像」の黄色 */
+  --bg: #f7f8f8;          /* HPの背景の明るい灰色 */
+  --text: #333333;
+  --muted: #666666;
+  --line: #dddddd;
+  --white: #ffffff;
+  --warn-bg: #fffbe0;
+  --warn-line: #f2e27a;
+  --red: #c9302c;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Yu Gothic UI", "Yu Gothic", "Hiragino Sans", "Meiryo", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+}
+
+/* 上の帯：チームカラーの濃い紫グラデーション（ユニフォームの色） */
+.top { background: linear-gradient(120deg, var(--main-deep) 0%, #5a0fb0 55%, var(--main) 100%); color: var(--white); position: relative; overflow: hidden; }
+.top::after { content: ""; position: absolute; right: -60px; top: -80px; width: 260px; height: 260px; border-radius: 50%; border: 36px solid rgba(255, 233, 74, .14); pointer-events: none; }
+header { max-width: 860px; margin: 0 auto; padding: 22px 16px 14px; display: flex; align-items: center; gap: 14px; position: relative; z-index: 1; }
+header .emblem { height: 84px; width: auto; margin: -10px -2px -16px 0; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .3)); }
+header .logo { font-style: italic; font-weight: 900; font-size: 30px; letter-spacing: .02em; color: var(--white); line-height: 1; text-shadow: 0 2px 8px rgba(0, 0, 0, .25); }
+header .logo span { color: var(--yellow); }
+header .bar { width: 3px; align-self: stretch; background: var(--yellow); border-radius: 2px; }
+header h1 { font-size: 18px; margin: 0; color: var(--white); font-weight: bold; letter-spacing: .08em; }
+header small { color: rgba(255, 255, 255, .75); display: block; font-size: 12px; margin-top: -2px; letter-spacing: .04em; }
+
+/* タブ：帯の下の白い丸タブ */
+nav { max-width: 860px; margin: 0 auto; display: flex; gap: 8px; overflow-x: auto; padding: 6px 16px 18px; position: relative; z-index: 1; }
+nav button { flex: none; border: 1px solid rgba(255, 255, 255, .35); background: rgba(255, 255, 255, .08); color: rgba(255, 255, 255, .85); padding: 7px 16px; border-radius: 999px; font-size: 14px; font-weight: bold; font-family: inherit; cursor: pointer; }
+nav button.active { background: var(--white); border-color: var(--white); color: var(--main-deep); box-shadow: 0 4px 12px rgba(0, 0, 0, .2); }
+nav button:disabled { cursor: not-allowed; color: rgba(255, 255, 255, .5); }
+
+main { max-width: 860px; margin: 0 auto; padding: 24px 16px 80px; }
+
+/* カード（HPの「チーム全員で取り組んでいること」と同じ、上に紫の線の白いカード） */
+.card { background: var(--white); border-radius: 16px; padding: 22px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(54, 23, 120, .06), 0 8px 24px rgba(54, 23, 120, .08); }
+.card h2 { margin: 0 0 14px; font-size: 18px; color: var(--main-deep); display: flex; align-items: center; gap: 12px; letter-spacing: .03em; }
+.num { background: var(--yellow); color: var(--main-deep); width: 32px; height: 32px; border-radius: 10px; transform: skewX(-8deg); box-shadow: 0 2px 0 #e6c200; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; flex: none; }
+
+label { display: block; font-weight: bold; font-size: 14px; margin: 12px 0 4px; }
+label small, .hint { font-weight: normal; color: var(--muted); font-size: 13px; }
+.hint { margin: 6px 0 0; }
+input[type="text"], input[type="date"], input[type="number"], input[type="time"], select, textarea {
+  width: 100%; border: 1px solid #ccc; border-radius: 6px; padding: 8px 12px; font-size: 16px; font-family: inherit; color: var(--text); background: var(--white);
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--main); box-shadow: 0 0 0 3px var(--main-soft); }
+textarea { resize: vertical; min-height: 60px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0 18px; }
+.grid > div { min-width: 0; }
+.grid .wide { grid-column: 1 / -1; }
+/* 「15 - 5 - 15」「9:00 〜 16:00」など：欄が狭いときは入力欄が縮む（となりの欄にはみ出さない） */
+.inline { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.inline input { flex: 1 1 4.5em; min-width: 0; max-width: 6em; text-align: center; }
+.inline > span { flex: none; }
+.inline input#f-lg1, .inline input#f-lg2 { max-width: none; }
+.check { display: flex; align-items: center; gap: 8px; font-weight: normal; }
+.check input { width: 18px; height: 18px; accent-color: var(--main); }
+
+/* ボタン（HPの「見学・無料体験の申込みはこちら」と同じ紫の丸いボタン） */
+.btn { border: none; border-radius: 999px; padding: 10px 22px; font-size: 15px; font-weight: bold; font-family: inherit; cursor: pointer; transition: transform .1s, background .2s; }
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn-main { background: linear-gradient(120deg, var(--main-deep), var(--main)); color: var(--white); box-shadow: 0 6px 16px rgba(154, 0, 255, .3); }
+.btn-main:hover { filter: brightness(1.1); }
+.btn-sub { background: var(--main-soft); color: var(--main-dark); }
+.btn-sub:hover { background: #e6d4ff; }
+.btn-small { padding: 4px 12px; font-size: 13px; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.btn-big { width: 100%; padding: 14px; font-size: 17px; }
+
+.drop { display: block; border: 2px dashed var(--main); background: var(--main-soft); border-radius: 12px; padding: 22px; text-align: center; color: var(--main-dark); font-weight: bold; cursor: pointer; }
+.drop input { display: none; }
+.drop.has { background: var(--white); }
+.notice { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 8px; padding: 10px 14px; font-size: 14px; margin-top: 12px; }
+.notice.err { background: #fdecea; border-color: #f5c2bf; color: var(--red); }
+.ok { color: var(--main-dark); font-weight: bold; }
+
+.teams { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.teams td { padding: 3px 4px; vertical-align: middle; }
+.teams .no { width: 2.2em; color: var(--muted); text-align: center; }
+.teams .lg { width: 6.5em; font-size: 12px; color: var(--main-dark); font-weight: bold; }
+.teams .city { width: 9em; }
+.teams .ops { width: 7.5em; white-space: nowrap; }
+.teams input { padding: 6px 10px; font-size: 15px; }
+
+/* 表（HPの「練習日程と場所」と同じ、見出しがうすい紫） */
+.preview h3 { font-size: 15px; margin: 16px 0 6px; color: var(--main); }
+.sched { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--white); }
+.sched th, .sched td { border: 1px solid var(--line); padding: 5px 6px; text-align: center; }
+.sched th { background: var(--main-soft); color: var(--main-deep); font-weight: bold; }
+.sched td.t { font-family: "MS Gothic", monospace; white-space: nowrap; }
+.sched td.note { font-weight: bold; }
+.sched td.diag { background: linear-gradient(to top right, transparent calc(50% - 1px), #bbb, transparent calc(50% + 1px)); }
+.scroll { overflow-x: auto; }
+
+/* TMのお知らせの見本（紙のように） */
+.tm-doc { border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; background: var(--white); font-family: "Yu Mincho", "游明朝", serif; font-size: 15px; }
+.tm-doc p { margin: 0 0 6px; }
+.tm-doc .tm-title { text-align: center; font-family: "Yu Gothic", sans-serif; font-weight: 900; font-size: 26px; color: #7030a0; margin-bottom: 10px; }
+.tm-doc .tm-title span { color: #e6c200; }
+.tm-doc .sched { margin: 8px 0 12px; }
+.tm-doc .tm-note { margin: 0; }
+
+/* Instagramタブ */
+.ig-types { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.ig-type { border: 2px solid var(--line); background: var(--white); color: var(--text); border-radius: 12px; padding: 12px 14px; font-size: 15px; font-weight: bold; font-family: inherit; text-align: left; cursor: pointer; }
+.ig-type:hover { border-color: #cdb0f5; }
+.ig-type.on { border-color: var(--main); background: var(--main-soft); color: var(--main-deep); }
+.ig-caption { min-height: 300px; line-height: 1.6; }
+.ig-count { text-align: right; font-size: 13px; color: var(--muted); margin-top: 4px; }
+.ig-count .over { color: var(--red); font-weight: bold; }
+.ig-h3 { font-size: 15px; margin: 20px 0 8px; color: var(--main); }
+.ig-h3 small { font-weight: normal; color: var(--muted); }
+.ig-thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+.ig-thumbs:empty { display: none; }
+.ig-thumb { position: relative; width: 84px; height: 84px; border-radius: 10px; overflow: hidden; border: 3px solid transparent; cursor: pointer; }
+.ig-thumb.on { border-color: var(--main); }
+.ig-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ig-no { position: absolute; left: 4px; bottom: 4px; background: var(--main-deep); color: var(--white); font-size: 11px; font-weight: bold; min-width: 18px; text-align: center; border-radius: 9px; }
+.ig-x, .ig-left { position: absolute; top: 2px; width: 24px; height: 24px; border: none; border-radius: 50%; background: rgba(0, 0, 0, .6); color: var(--white); font-size: 12px; line-height: 1; cursor: pointer; padding: 0; }
+.ig-x { right: 2px; }
+.ig-left { left: 2px; }
+.ig-stage { display: flex; justify-content: center; margin: 16px 0 8px; }
+#ig-canvas { width: 100%; max-width: 340px; height: auto; border-radius: 10px; box-shadow: 0 8px 24px rgba(54, 23, 120, .2); background: var(--main-soft); }
+.ig-sliders { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0 16px; }
+.ig-sliders label { font-weight: normal; margin: 4px 0; }
+.ig-sliders input { width: 100%; accent-color: var(--main); }
+.ig-list { margin: 0; padding-left: 1.3em; }
+.ig-list li { margin-bottom: 4px; }
+#ig-share { min-height: 110px; background: var(--bg); }
+
+.files { display: grid; gap: 10px; }
+.file { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; transition: border-color .2s, background .2s; }
+.file:hover { border-color: #cdb0f5; background: #fcf9ff; }
+.file .ic { font-size: 22px; }
+.file .nm { flex: 1; }
+.file .nm b { display: block; }
+.file .nm small { color: var(--muted); }
+
+#toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px); background: var(--main-deep); color: var(--white); padding: 12px 22px; border-radius: 999px; font-weight: bold; opacity: 0; pointer-events: none; transition: all .3s; max-width: 90vw; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+@media (max-width: 560px) {
+  header { gap: 10px; }
+  header .emblem { height: 64px; }
+  header .logo { font-size: 20px; }
+  header h1 { font-size: 15px; }
+  .teams .city { width: 6em; }
+  .teams .lg { display: none; }
+  .btn-row .btn { flex: 1 1 100%; }
+}
