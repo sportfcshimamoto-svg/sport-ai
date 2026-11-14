@@ -155,7 +155,19 @@ textarea { resize: vertical; min-height: 60px; }
   header .emblem { height: 64px; }
   header .logo { font-size: 20px; }
   header h1 { font-size: 15px; }
-  .teams .city { width: 6em; }
   .teams .lg { display: none; }
+  /* スマホ：1チームを2行に（上にチーム名を広く、下に市町と ↑↓✕） */
+  .teams, .teams tbody { display: block; }
+  .teams tr { display: grid; grid-template-columns: 1.8em 1fr auto; grid-template-areas: "no tn tn" "no city ops"; gap: 6px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .teams td { padding: 0; }
+  .teams .no { grid-area: no; width: auto; align-self: center; }
+  .teams .tn { grid-area: tn; }
+  .teams .city { grid-area: city; width: auto; }
+  .teams .ops { grid-area: ops; width: auto; }
   .btn-row .btn { flex: 1 1 100%; }
 }
+
+/* 要項の読み込み：Word・PDFの2つのボタン（2026年11月） */
+.pick2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.pick2 .drop { padding: 16px 8px; }
+.pick2 .drop small { font-weight: normal; color: var(--muted); }

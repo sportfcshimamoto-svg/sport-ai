@@ -1,8 +1,9 @@
 // SPORT AI事務局：大会（SPORT CUP）の書き出し
 // AIもインターネットも使わない。要項の読み取り・計算・ファイル作りは、すべてこのブラウザの中で行う。
 import { GRADES, FORMATS, FINALS_GAP } from './lib/schedule.js';
-import { readYoukou } from './lib/youkou.js';
-import { defaultsFor, defaultNotes, fromYoukou, prepare, buildAll, slotOf } from './lib/tournament.js';
+import { readYoukou, PLAYERS_RE } from './lib/youkou.js';
+import { defaultsFor, defaultNotes, fromYoukou, prepare, slotOf, methodText, othersText, STD_FEE } from './lib/tournament.js';
+import { buildCupPdfs, PDF_FILES, fileTag } from './lib/cup-pdf.js';
 import { writeZip } from './lib/zip.js';
 
 const KEY = 'sport-ai:v1';
@@ -12,44 +13,56 @@ const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').
 // ---------- 状態 ----------
 let S = load() || newState('U12');
 if (S.finalsGap == null) S.finalsGap = S.format === 'two3' ? FINALS_GAP : S.gap;   // 前に保存した内容には無い
-let youkou = null;            // 読み込んだ要項（Uint8Array）
-let youkouName = '';
-let youkouPlayers = '';       // 要項に書いてあった人数（例：「８人制」「6～８人制」）
+if (S.fee == null) S.fee = STD_FEE;
+// 読み込んだ要項から取った文（{ name, kind, sections, format }）。ファイルそのものは保存しない
+let doc = loadDoc();
 
 function newState(grade) {
   const d = defaultsFor(grade);
   const now = new Date();
-  return { ...d, year: now.getFullYear(), month: null, day: null, teams: ['', '', '', '', '', ''].slice(0, d.format === 'two3' ? 6 : 4), cities: [], ...notesOf(d) };
+  return { ...d, year: now.getFullYear(), month: null, day: null, teams: ['', '', '', '', '', ''].slice(0, d.format === 'two3' ? 6 : 4), cities: [], fee: STD_FEE, contactName: '', contactTel: '', others: null, ...notesOf(d) };
 }
 function notesOf(t) { const n = defaultNotes(t); return { exchange: n.exchange, notesAfter: n.after, useExchange: true }; }
 function load() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; } }
 function save() {
   try {
     localStorage.setItem(KEY, JSON.stringify(S));
-    if (youkou) localStorage.setItem(KEY + ':youkou', JSON.stringify({ name: youkouName, b64: b64(youkou) }));
+    if (doc) localStorage.setItem(KEY + ':doc', JSON.stringify(doc)); else localStorage.removeItem(KEY + ':doc');
   } catch { /* 保存できなくても使える */ }
 }
-function loadYoukouFromStore() {
+function loadDoc() {
+  try { return JSON.parse(localStorage.getItem(KEY + ':doc') || 'null'); } catch { return null; }
+}
+/** 前の版はWordのファイルそのものを保存していた → 文だけ取り出して入れかえる */
+async function migrateOldYoukou() {
   try {
     const v = JSON.parse(localStorage.getItem(KEY + ':youkou') || 'null');
-    if (v) { youkou = unb64(v.b64); youkouName = v.name; readYoukou(youkou).then((y) => { youkouPlayers = y.players || ''; const o = document.querySelector('#f-players option[value=""]'); if (o && youkouPlayers) o.textContent = `要項のまま（${youkouPlayers}）`; }).catch(() => {}); }
+    if (!v) return;
+    localStorage.removeItem(KEY + ':youkou');
+    if (doc) return;
+    const y = await readYoukou(Uint8Array.from(atob(v.b64), (c) => c.charCodeAt(0)));
+    doc = docOf(y, v.name);
+    save();
+    if ($('#f-youkou-docx')) render();
   } catch { /* なし */ }
 }
-const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s); };
-const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+const docOf = (y, name) => ({ name, kind: y.kind, sections: y.sections || {}, format: y.format || null });
+/** 「要項のまま」の人数（読み込んだ要項、なければひな形） */
+const basePlayers = () => (methodText({ ...S, players: '' }, doc)[0]?.match(PLAYERS_RE) || [''])[0];
 
 // ---------- 画面 ----------
 function render() {
   $('#app').innerHTML = `
   <section class="card">
-    <h2><span class="num">1</span>大会要項（Word）を読み込む</h2>
-    <label class="drop ${youkou ? 'has' : ''}">
-      ${youkou ? `📄 ${esc(youkouName)}<br><small>別の要項にするときは、ここをタップ</small>` : '📄 ここをタップして、要項のWordファイル（.docx）をえらぶ'}
-      <input type="file" id="f-youkou" accept=".docx">
-    </label>
-    <p class="hint">いつも作っている「SPORTCUP ○○要項.docx」をそのまま選んでください。日時・場所・学年・競技時間・リーグの形を読み取って、下に入れます。<br>
-    要項がなくても、下で学年をえらべば リーグ表・掲示用・優秀選手賞・審判カード は作れます（完成版の要項だけは作れません）。</p>
-    ${youkou ? '<div class="btn-row"><button class="btn btn-sub btn-small" id="btn-unload">要項を外す</button></div>' : ''}
+    <h2><span class="num">1</span>要項を読み込む</h2>
+    ${doc ? `<div class="drop has">📄 ${esc(doc.name)}<br><small>この要項の文で作ります。別の要項にするときは、下のボタンから選び直してください</small></div>` : ''}
+    <div class="pick2">
+      <label class="drop">📝 Wordをえらぶ<br><small>要項の .docx</small><input type="file" id="f-youkou-docx" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></label>
+      <label class="drop">📕 PDFをえらぶ<br><small>要項の .pdf</small><input type="file" id="f-youkou-pdf" accept=".pdf,application/pdf"></label>
+    </div>
+    <p class="hint"><b>要項がなくても大丈夫です。</b>いつもの「SPORTCUP ○○要項」（WordでもPDFでも）を選ぶと、日時・場所・学年・競技時間・リーグの形を読み取って、下に入れます。<br>
+    要項がないときは、下にチーム名と市町などを入れるだけで、完成版の要項まで全部作れます（いつもの要項の文を使います）。</p>
+    ${doc ? '<div class="btn-row"><button class="btn btn-sub btn-small" id="btn-unload">読み込んだ要項を外す（いつもの文にもどす）</button></div>' : ''}
     <div id="youkou-msg"></div>
   </section>
 
@@ -61,8 +74,10 @@ function render() {
       <div><label>日にち</label><input type="date" id="f-date" value="${S.month ? `${S.year}-${String(S.month).padStart(2, '0')}-${String(S.day).padStart(2, '0')}` : ''}"></div>
       <div><label>時間 <small>（要項の「日時」）</small></label><div class="inline"><input type="text" id="f-open" value="${esc(S.open)}">〜<input type="text" id="f-close" value="${esc(S.close)}"></div></div>
       <div class="wide"><label>場所</label><input type="text" id="f-place" value="${esc(S.place)}"></div>
+      <div><label>対象</label><input type="text" id="f-target" value="${esc(S.target)}"></div>
+      <div><label>参加費</label><input type="text" id="f-fee" value="${esc(S.fee)}"></div>
       <div><label>競技時間 <small>（前半-休けい-後半）</small></label><div class="inline"><input type="number" id="f-half" min="5" max="40" value="${S.half}">-<input type="number" id="f-brk" min="0" max="15" value="${S.brk}">-<span id="half2">${S.half}</span></div></div>
-      <div><label>人数 <small>（要項の「競技方法」）</small></label><select id="f-players"><option value="" ${!S.players ? 'selected' : ''}>要項のまま${youkouPlayers ? `（${esc(youkouPlayers)}）` : ''}</option>${[5, 6, 7, 8].map((n) => `<option value="${n}" ${n == S.players ? 'selected' : ''}>${'５６７８'[n - 5]}人制</option>`).join('')}</select></div>
+      <div><label>人数 <small>（要項の「競技方法」）</small></label><select id="f-players"><option value="" ${!S.players ? 'selected' : ''}>${doc ? '要項' : 'いつも'}のまま${basePlayers() ? `（${esc(basePlayers())}）` : ''}</option>${[5, 6, 7, 8].map((n) => `<option value="${n}" ${n == S.players ? 'selected' : ''}>${'５６７８'[n - 5]}人制</option>`).join('')}</select></div>
       <div><label>形式</label><select id="f-format">${Object.entries(FORMATS).map(([k, v]) => `<option value="${k}" ${k === S.format ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
       ${S.format === 'two3'
         ? `<div><label>リーグの名前</label><div class="inline"><input type="text" id="f-lg1" value="${esc(S.leagues[0])}" style="width:50%">・<input type="text" id="f-lg2" value="${esc(S.leagues[1])}" style="width:50%"></div></div>`
@@ -75,6 +90,10 @@ function render() {
       <div class="wide"><label class="check"><input type="checkbox" id="f-ref" ${S.finalsRef ? 'checked' : ''}>順位決定戦の審判を、ほかのチームにお願いする（見本：「やま1位」「やま3位」「くす1位」）</label></div>
       <div class="wide"><label class="check"><input type="checkbox" id="f-ex" ${S.useExchange !== false ? 'checked' : ''}>Aコートの最後に交流戦の行を入れる</label><input type="text" id="f-exchange" value="${esc(S.exchange)}"></div>` : ''}
       <div class="wide"><label>タイムスケジュールの下に書くこと <small>（1行に1つ。Aコートの下）</small></label><textarea id="f-notes">${esc((S.notesAfter?.[0] || []).join('\n'))}</textarea></div>
+      <div class="wide"><label>要項の「●その他」 <small>（1行に1つ。雨天の判断の時間・車の台数など）</small></label><textarea id="f-others" rows="5">${esc(othersText(S, doc).join('\n'))}</textarea></div>
+      <div><label>連絡先の名前 <small>（例：山田 太郎）</small></label><input type="text" id="f-cname" value="${esc(S.contactName || '')}" placeholder="空なら「SPORT FC」だけ"></div>
+      <div><label>連絡先の電話番号</label><input type="tel" id="f-ctel" value="${esc(S.contactTel || '')}" placeholder="090-0000-0000"></div>
+      <p class="hint wide">連絡先は要項の2ページ目の下に「SPORT FC 代表 ○○　Tel …」と入ります。入れた名前と番号は、この端末の中にだけ保存されます。</p>
     </div>
   </section>
 
@@ -104,8 +123,8 @@ function renderTeams() {
   $('#teams').innerHTML = S.teams.map((t, i) => `<tr>
     <td class="no">${i + 1}</td>
     ${S.format === 'two3' ? `<td class="lg">${i < 3 ? esc(S.leagues[0]) : i < 6 ? esc(S.leagues[1]) : '（使いません）'}</td>` : ''}
-    <td><input type="text" data-team="${i}" value="${esc(t)}" placeholder="チーム名"></td>
-    <td class="city"><input type="text" data-city="${i}" value="${esc(S.cities[i] || '')}" placeholder="市町（例：高槻市）"></td>
+    <td class="tn"><input type="text" data-team="${i}" value="${esc(t)}" placeholder="チーム名"></td>
+    <td class="city"><input type="text" data-city="${i}" value="${esc(S.cities[i] || '')}" placeholder="例：高槻市" aria-label="市町"></td>
     <td class="ops">
       <button class="btn btn-sub btn-small" data-up="${i}" ${i === 0 ? 'disabled' : ''} title="上へ">↑</button>
       <button class="btn btn-sub btn-small" data-down="${i}" ${i === n - 1 ? 'disabled' : ''} title="下へ">↓</button>
@@ -154,41 +173,36 @@ function check() {
   return out;
 }
 
-const FILES = [
-  { name: (tag) => `${tag}.docx`, key: 'youkou', ic: '📄', title: '完成版の要項（2ページ目にリーグ表・タイムスケジュール）', sub: '読み込んだ要項に、参加チームと2ページ目を入れたもの' },
-  { name: () => 'リーグ表.docx', ic: '📊', title: 'リーグ表', sub: 'A4横・勝ち点／得失／総得点／順位の欄つき' },
-  { name: () => '掲示用.docx', ic: '📋', title: '掲示用（タイムスケジュール）', sub: 'A4横・大きな字' },
-  { name: () => '優秀選手賞.docx', ic: '🏅', title: '優秀選手賞カード', sub: '1チーム1枚・A4に8枚' },
-  { name: () => '審判カード.xlsx', ic: '🟨', title: '審判カード（Excel）', sub: 'いつもの Referee card の形・チーム名入り・A4に8枚' },
-];
-
 function renderFiles(ready) {
   if (!ready) { $('#files').innerHTML = '<p class="hint">上の「できあがりの確認」に表が出たら、ここから書き出せます。</p>'; return; }
-  const p = prepare(S);
-  const tag = `${p.shortTitle.replace(/^SPORT CUP\s*/, 'SPORTCUP ').replace(/U-/, 'U')} ${p.dateDots}`.trim();
-  $('#files').innerHTML = `<div class="files">${FILES.map((f, i) => {
-    const off = f.key === 'youkou' && !youkou;
-    return `<div class="file"><span class="ic">${f.ic}</span><span class="nm"><b>${esc(f.title)}</b><small>${off ? '要項を読み込むと作れます' : esc(f.name(tag)) + '　' + esc(f.sub)}</small></span>
-      <button class="btn btn-sub btn-small" data-dl="${i}" ${off ? 'disabled' : ''}>ダウンロード</button></div>`;
-  }).join('')}</div>
-  <div class="btn-row"><button class="btn btn-main btn-big" id="btn-all">⬇ まとめてダウンロード（ZIP）</button></div>
-  <p class="hint">ダウンロードしたファイルは、WordやExcelで開いて、そのまま直せます。</p>`;
+  const tag = fileTag(prepare(S));
+  $('#files').innerHTML = `<div class="files">${PDF_FILES.map((f) => `<div class="file"><span class="ic">${f.ic}</span><span class="nm"><b>${esc(f.title)}</b><small>${esc(f.name || `${tag}.pdf`)}　${esc(f.sub)}</small></span>
+      <button class="btn btn-sub btn-small" data-dl="${f.key}">ダウンロード</button></div>`).join('')}</div>
+  <div class="btn-row">
+    <button class="btn btn-main btn-big" id="btn-all">⬇ 全部を1つのPDFにする</button>
+    <button class="btn btn-sub" id="btn-zip">5つのPDFをまとめてダウンロード（ZIP）</button>
+  </div>
+  <p class="hint">すべてPDFです。スマホでもパソコンでも、同じ見た目で開けて、そのまま印刷できます。<br>
+  PDFは文字を直せないので、直したいときは上の入力を直して、もう一度ダウンロードしてください。</p>`;
   $('#files').onclick = async (e) => {
-    const b = e.target.closest('[data-dl]');
-    if (b) {
-      const files = await safeBuild(); if (!files) return;
-      const name = FILES[Number(b.dataset.dl)].name(tag);
-      download(name, files[name]);
-    }
-    if (e.target.id === 'btn-all') {
-      const files = await safeBuild(); if (!files) return;
-      download(`${tag}.zip`, await writeZip(files));
-    }
+    const b = e.target.closest('button'); if (!b || b.disabled) return;
+    const keys = b.dataset.dl ? [b.dataset.dl] : undefined;
+    if (!keys && !['btn-all', 'btn-zip'].includes(b.id)) return;
+    const files = await safeBuild(b, keys, { together: b.id === 'btn-all' }); if (!files) return;
+    if (b.id === 'btn-zip') download(`${tag}.zip`, await writeZip(files));
+    else { const [name, bytes] = Object.entries(files)[0]; download(name, bytes); }
   };
 }
 
-async function safeBuild() {
-  try { return await buildAll(S, youkou); } catch (err) { console.error(err); toast('作れませんでした：' + err.message); return null; }
+/** PDFを作る（数秒かかるので、ボタンに「作っています」と出す） */
+async function safeBuild(btn, keys, opt) {
+  const label = btn.textContent;
+  document.querySelectorAll('#files button').forEach((x) => { x.disabled = true; });
+  btn.textContent = '作っています…';
+  try { return await buildCupPdfs(S, doc, keys, opt); } catch (err) { console.error(err); toast('作れませんでした：' + err.message); return null; } finally {
+    btn.textContent = label;
+    document.querySelectorAll('#files button').forEach((x) => { x.disabled = false; });
+  }
 }
 
 function download(name, bytes) {
@@ -202,27 +216,34 @@ function download(name, bytes) {
 
 // ---------- 入力 ----------
 function bind() {
-  $('#f-youkou').onchange = async (e) => {
+  const pick = async (e) => {
     const f = e.target.files[0]; if (!f) return;
+    $('#youkou-msg').innerHTML = '<div class="notice">読み取っています…</div>';
     try {
       const bytes = new Uint8Array(await f.arrayBuffer());
       const y = await readYoukou(bytes);
-      youkou = bytes; youkouName = f.name; youkouPlayers = y.players || '';
+      doc = docOf(y, f.name);
       const keepTeams = S.teams.some((t) => t.trim());
       const t = fromYoukou(y);
       const n = t.format === 'two3' ? 6 : (y.teamCount || 4);
       S = { ...S, ...t, year: S.year || new Date().getFullYear(), useExchange: true,
-        teams: keepTeams ? S.teams : padTo(t.teams, n), cities: keepTeams ? S.cities : t.cities, players: '' };
+        teams: keepTeams ? S.teams : padTo(t.teams, n), cities: keepTeams ? S.cities : t.cities, players: '', others: null,
+        fee: y.fee || S.fee || STD_FEE };
+      // 連絡先は、まだ入れていないときだけ要項から入れる
+      if (y.contact && !S.contactName && !S.contactTel) { S.contactName = y.contact.name; S.contactTel = y.contact.tel; }
       if (y.month) S.year = guessYear(y.month);
       render();
       const got = [y.grade && `学年 ${y.grade}`, y.month && `日にち ${y.month}月${y.day}日`, y.place && '場所', y.half && `競技時間 ${y.half}-${y.brk}-${y.half}`, y.format && FORMATS[y.format].split('（')[0]].filter(Boolean);
-      $('#youkou-msg').innerHTML = `<div class="notice"><span class="ok">読み取りました：</span>${esc(got.join('・'))}<br>
+      $('#youkou-msg').innerHTML = `<div class="notice"><span class="ok">${y.kind === 'pdf' ? 'PDF' : 'Word'}の要項を読み取りました：</span>${esc(got.join('・')) || '（日時などは読み取れませんでした。下に入れてください）'}<br>
         日にちは要項の中身から入れています。<b>まちがっていないか確かめてください</b>（前の大会の要項を使い回したとき、日付が古いままのことがあります）。</div>`;
     } catch (err) {
       $('#youkou-msg').innerHTML = `<div class="notice err">読み取れませんでした：${esc(err.message)}</div>`;
     }
+    e.target.value = '';
   };
-  $('#btn-unload')?.addEventListener('click', () => { youkou = null; youkouName = ''; youkouPlayers = ''; try { localStorage.removeItem(KEY + ':youkou'); } catch { /* なし */ } render(); });
+  $('#f-youkou-docx').onchange = pick;
+  $('#f-youkou-pdf').onchange = pick;
+  $('#btn-unload')?.addEventListener('click', () => { doc = null; S.others = null; save(); render(); });
 
   $('#f-grade').onchange = (e) => {
     const d = defaultsFor(e.target.value);
@@ -246,6 +267,11 @@ function bind() {
   on('#f-open', (el) => { S.open = el.value.trim(); });
   on('#f-close', (el) => { S.close = el.value.trim(); if (S.format === 'two3') { S.exchange = S.exchange.replace(/～[\d:]+$/, `～${S.close}`); const x = $('#f-exchange'); if (x) x.value = S.exchange; } });
   on('#f-place', (el) => { S.place = el.value; });
+  on('#f-target', (el) => { S.target = el.value; });
+  on('#f-fee', (el) => { S.fee = el.value; });
+  on('#f-others', (el) => { S.others = el.value.split('\n').map((s) => s.trim()).filter(Boolean); });
+  on('#f-cname', (el) => { S.contactName = el.value; });
+  on('#f-ctel', (el) => { S.contactTel = el.value; });
   on('#f-half', (el) => { S.half = +el.value || 0; $('#half2').textContent = S.half; S.matchMin = slotOf(S.half, S.brk); $('#f-match').value = S.matchMin; });
   on('#f-brk', (el) => { S.brk = +el.value || 0; S.matchMin = slotOf(S.half, S.brk); $('#f-match').value = S.matchMin; });
   on('#f-courts', (el) => { S.courts = +el.value; });
@@ -331,7 +357,7 @@ function tabFailed(name, err) {
 }
 $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b && !b.disabled) showTab(b.dataset.tab); });
 
-loadYoukouFromStore();
+migrateOldYoukou();
 let firstTab = 'cup';
 try { firstTab = localStorage.getItem(KEY + ':tab') || 'cup'; } catch { /* なし */ }
 showTab(['tm', 'insta'].includes(firstTab) ? firstTab : 'cup');
