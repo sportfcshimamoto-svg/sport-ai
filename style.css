@@ -171,3 +171,53 @@ textarea { resize: vertical; min-height: 60px; }
 .pick2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
 .pick2 .drop { padding: 16px 8px; }
 .pick2 .drop small { font-weight: normal; color: var(--muted); }
+
+/* 会計タブ */
+.kk-who { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 22px; }
+.kk-who small { color: var(--muted); }
+.kk-views { display: flex; gap: 8px; flex-wrap: wrap; margin: -6px 0 18px; }
+.kk-views button { border: 1px solid var(--line); background: var(--white); color: var(--main-deep); padding: 8px 16px; border-radius: 999px; font-size: 14px; font-weight: bold; font-family: inherit; cursor: pointer; }
+.kk-views button.active { background: var(--main-deep); border-color: var(--main-deep); color: var(--white); }
+.kk-busy { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); background: var(--main-deep); color: var(--white); padding: 8px 18px; border-radius: 999px; font-size: 14px; z-index: 50; box-shadow: 0 6px 16px rgba(0, 0, 0, .2); }
+.kk-drop { padding: 16px; margin-top: 4px; }
+.kk-files { list-style: none; padding: 0; margin: 4px 0 8px; }
+.kk-files li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; flex-wrap: wrap; }
+.kk-files img { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; }
+.kk-sent { background: #eefbea; border: 1px solid #bfe5b4; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; }
+.btn-line { background: #06c755; color: var(--white); text-decoration: none; display: inline-block; }
+.kk-month { font-size: 15px; color: var(--main-deep); margin: 18px 0 6px; border-bottom: 2px solid var(--main-soft); padding-bottom: 4px; }
+.kk-month small { color: var(--muted); font-weight: normal; margin-left: 8px; }
+.kk-entry { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 8px 0; background: var(--white); }
+.kk-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.kk-line .kk-amt { margin-left: auto; }
+.kk-date { color: var(--muted); font-size: 14px; }
+.kk-item { font-weight: bold; }
+.kk-detail { font-size: 14px; margin: 2px 0 6px; overflow-wrap: anywhere; }
+.kk-detail small { color: var(--muted); }
+.kk-ops { gap: 6px; }
+.kk-chip { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--warn-bg); border: 1px solid var(--warn-line); color: #7a6400; font-weight: normal; }
+.kk-chip.ok { background: #eefbea; border-color: #bfe5b4; color: #2d7a1f; }
+.kk-sum { width: 100%; border-collapse: collapse; margin-top: 14px; }
+.kk-sum th { background: var(--main-soft); color: var(--main-deep); text-align: left; padding: 6px 10px; font-size: 14px; }
+.kk-sum td { padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.kk-sum th:nth-child(n+2), .kk-sum td:nth-child(n+2) { text-align: right; white-space: nowrap; }
+.kk-sum tr[data-act] { cursor: pointer; }
+.kk-sum tr[data-act]:hover { background: #faf6ff; }
+.kk-sum .kk-sub td { text-align: left; background: #faf8fd; padding: 4px 8px; }
+.kk-total td { border-top: 2px solid var(--main-deep); border-bottom: none; font-weight: bold; }
+.kk-months { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+details summary { cursor: pointer; color: var(--main-dark); font-weight: bold; margin-top: 12px; }
+.kk-coaches { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.kk-coaches li { background: var(--main-soft); border-radius: 999px; padding: 3px 4px 3px 12px; display: flex; align-items: center; gap: 6px; }
+.kk-add { margin-top: 12px; }
+.kk-add input { max-width: 14em; text-align: left; }
+.kk-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, .6); z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.kk-modal-in { background: var(--white); border-radius: 12px; padding: 12px; max-width: 760px; width: 100%; max-height: 92vh; overflow: auto; }
+.kk-modal-in .kk-line { justify-content: space-between; margin-bottom: 8px; overflow-wrap: anywhere; }
+.kk-modal-in img { max-width: 100%; display: block; margin: 0 auto; }
+.kk-modal-in iframe { width: 100%; height: 70vh; border: 1px solid var(--line); }
+input[type="password"] { width: 100%; border: 1px solid #ccc; border-radius: 6px; padding: 8px 12px; font-size: 16px; font-family: inherit; }
+@media (max-width: 600px) {
+  .kk-who { flex-direction: column; align-items: flex-start; padding: 12px 16px; }
+  .kk-sum th, .kk-sum td { padding: 6px; }
+}

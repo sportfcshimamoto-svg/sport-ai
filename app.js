@@ -325,6 +325,9 @@ async function showTab(name) {
     } else if (name === 'insta') {
       const { renderInsta } = await import('./insta.js');
       renderInsta($('#app'), { toast, download });
+    } else if (name === 'kaikei') {
+      const { renderKaikei } = await import('./kaikei.js');
+      renderKaikei($('#app'), { toast, download });
     } else {
       render();
     }
@@ -360,4 +363,4 @@ $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-
 migrateOldYoukou();
 let firstTab = 'cup';
 try { firstTab = localStorage.getItem(KEY + ':tab') || 'cup'; } catch { /* なし */ }
-showTab(['tm', 'insta'].includes(firstTab) ? firstTab : 'cup');
+showTab(['tm', 'insta', 'kaikei'].includes(firstTab) ? firstTab : 'cup');
