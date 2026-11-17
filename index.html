@@ -2,19 +2,23 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>SPORT AI事務局</title>
 <link rel="icon" type="image/png" href="img/favicon.png">
 <link rel="apple-touch-icon" href="img/icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="SPORT事務局">
-<meta name="theme-color" content="#361778">
+<meta name="theme-color" content="#7cc8ff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="top">
 <header>
+  <a class="home-link" href="#" data-tab="home" aria-label="トップページへ">
   <img class="emblem" src="img/logo.png" alt="SPORT FC ロゴ">
   <div class="logo">SPO<span>R</span>T FC</div>
   <div class="bar"></div>
@@ -22,10 +26,12 @@
     <h1>AI事務局</h1>
     <small>事務作業を、やさしくラクに</small>
   </div>
+  </a>
 </header>
 
 <nav id="tabs">
-  <button class="active" data-tab="cup">🏆 大会（SPORT CUP）</button>
+  <button class="active" data-tab="home">🏠 トップ</button>
+  <button data-tab="cup">🏆 大会（SPORT CUP）</button>
   <button data-tab="tm">⚽ TM（練習試合）</button>
   <button data-tab="insta">📷 Instagram</button>
   <button data-tab="kaikei">💴 会計</button>

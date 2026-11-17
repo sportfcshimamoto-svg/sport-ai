@@ -317,7 +317,11 @@ function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.ad
 // ---------- タブ ----------
 async function showTab(name) {
   document.querySelectorAll('#tabs [data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
-  try { localStorage.setItem(KEY + ':tab', name); } catch { /* なし */ }
+  if (name !== 'home') { try { localStorage.setItem(KEY + ':tab', name); } catch { /* なし */ } }
+  window.scrollTo(0, 0);
+  document.body.classList.toggle('is-home', name === 'home');
+  // スマホの上の帯（時計のところ）の色：トップは空色、ほかは今までの紫
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', name === 'home' ? '#7cc8ff' : '#361778');
   try {
     if (name === 'tm') {
       const { renderTM } = await import('./tm.js');
@@ -328,6 +332,8 @@ async function showTab(name) {
     } else if (name === 'kaikei') {
       const { renderKaikei } = await import('./kaikei.js');
       renderKaikei($('#app'), { toast, download });
+    } else if (name === 'home') {
+      renderHome();
     } else {
       render();
     }
@@ -358,9 +364,94 @@ function tabFailed(name, err) {
   </section>`;
   $('#btn-retry').addEventListener('click', () => location.reload());
 }
+// ---------- トップページ ----------
+const ICONS = {
+  cup: '<path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 14v4M8 20h8"/>',
+  tm: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5l3.6 2.6-1.4 4.2H9.8l-1.4-4.2z"/><path d="M12 3.5v4M15.6 10.1l4-1.3M14.2 14.3l2.4 3.4M9.8 14.3l-2.4 3.4M8.4 10.1l-4-1.3"/>',
+  insta: '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r=".6" fill="currentColor"/>',
+  kaikei: '<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h4"/><path d="M16 3.5l-9 2.5"/>',
+};
+const MENU = [
+  { tab: 'cup', en: 'TOURNAMENT', name: '大会（SPORT CUP）', desc: '要項・リーグ表・タイムスケジュール・掲示用・優秀選手賞・審判カードを、まとめてPDFに。' },
+  { tab: 'tm', en: 'TRAINING MATCH', name: 'TM（練習試合）', desc: '相手・日にち・会場を入れるだけで、TMのお知らせがPDFで完成。' },
+  { tab: 'insta', en: 'INSTAGRAM', name: 'Instagram', desc: '練習の様子や体験の募集の、投稿文と画像をつくる。' },
+  { tab: 'kaikei', en: 'ACCOUNTING', name: '会計', desc: '立替の入力と、返金の一覧・チェック。' },
+];
+const icon = (k) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]}</svg>`;
+function renderHome() {
+  let last = '';
+  try { last = localStorage.getItem(KEY + ':tab') || ''; } catch { /* なし */ }
+  const lastItem = MENU.find((m) => m.tab === last);
+  const now = new Date();
+  const h = now.getHours();
+  const hello = h < 5 ? 'おつかれさまです' : h < 11 ? 'おはようございます' : h < 18 ? 'こんにちは' : 'おつかれさまです';
+  const dd = (n) => String(n).padStart(2, '0');
+  const tick = ['SPORT FC', 'SHIMAMOTO', 'ENJOY FOOTBALL', 'SINCE 2015', 'OFFICE WORKS', 'PLAY TOGETHER'];
+  const tickRow = tick.map((t) => `<span>${t}</span><i>✦</i>`).join('');
+  $('#app').innerHTML = `
+  <section class="hx">
+    <svg class="hx-pitch" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <g fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="40" y="30" width="720" height="460"/>
+        <line x1="400" y1="30" x2="400" y2="490"/>
+        <circle cx="400" cy="260" r="78"/>
+        <circle cx="400" cy="260" r="4" fill="currentColor"/>
+        <rect x="40" y="150" width="110" height="220"/><rect x="40" y="205" width="40" height="110"/>
+        <rect x="650" y="150" width="110" height="220"/><rect x="720" y="205" width="40" height="110"/>
+        <path d="M150 215a50 50 0 0 1 0 90M650 215a50 50 0 0 0 0 90"/>
+      </g>
+    </svg>
+    <div class="hx-sun"></div>
+    <div class="hx-cloud c1"></div><div class="hx-cloud c2"></div><div class="hx-cloud c3"></div>
+    <div class="hx-slash"></div>
+    <div class="hx-turf"></div>
+    <div class="wrap hx-inner">
+      <div class="hx-copy">
+        <div class="hx-meta"><span class="hx-chip">TODAY</span><span class="hx-date">${dd(now.getMonth() + 1)}.${dd(now.getDate())}</span><span class="hx-dow">${['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][now.getDay()]}</span></div>
+        <h2 class="hx-title"><span class="l1">KICK OFF</span><span class="l2">YOUR</span><span class="l3">OFFICE<b>.</b></span></h2>
+        <p class="hx-lead">${hello}。<br>今日はなにをしますか？</p>
+        ${lastItem
+          ? `<button class="hx-cta" data-go="${lastItem.tab}"><small>CONTINUE</small><span>前回のつづき：${esc(lastItem.name)}</span><em>→</em></button>`
+          : `<button class="hx-cta" data-go="cup"><small>START</small><span>大会の準備からはじめる</span><em>→</em></button>`}
+      </div>
+      <div class="hx-art">
+        <div class="hx-ring"></div>
+        <img src="img/sporton.png" alt="スポルトン">
+      </div>
+    </div>
+  </section>
+
+  <div class="tk" aria-hidden="true"><div class="tk-row">${tickRow}${tickRow}</div></div>
+
+  <section class="wrap mx-wrap">
+    <div class="sec-head"><span class="sec-en">MENU</span><span class="sec-ja">きょうの仕事をえらぶ</span><span class="sec-line"></span></div>
+    <div class="mx-grid">
+      ${MENU.map((m, i) => `
+      <button class="mx" data-go="${m.tab}" style="--d:${i * 70}ms">
+        <span class="mx-no">0${i + 1}</span>
+        <span class="mx-ic">${icon(m.tab)}</span>
+        <span class="mx-en">${m.en}</span>
+        <span class="mx-ja">${esc(m.name)}</span>
+        <span class="mx-desc">${esc(m.desc)}</span>
+        <span class="mx-go">OPEN<i></i></span>
+      </button>`).join('')}
+    </div>
+  </section>
+
+  <section class="wrap ab">
+    <div class="sec-head"><span class="sec-en">ABOUT</span><span class="sec-ja">このアプリについて</span><span class="sec-line"></span></div>
+    <div class="ab-grid">
+      <div class="ab-item"><b>LOCAL</b><p>入力した内容は、この端末（このブラウザ）の中にだけ保存されます。</p></div>
+      <div class="ab-item"><b>OFFLINE</b><p>大会・TM・Instagramは、インターネットに送らずにこの中で作ります。</p></div>
+      <div class="ab-item"><b>HOME</b><p>上の「SPORT FC」のロゴを押すと、いつでもこのページにもどれます。</p></div>
+    </div>
+    <p class="ft">SPORT FC SHIMAMOTO ／ AI事務局</p>
+  </section>`;
+  $('#app').querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.go)));
+}
+
 $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b && !b.disabled) showTab(b.dataset.tab); });
+document.querySelector('.home-link').addEventListener('click', (e) => { e.preventDefault(); showTab('home'); });
 
 migrateOldYoukou();
-let firstTab = 'cup';
-try { firstTab = localStorage.getItem(KEY + ':tab') || 'cup'; } catch { /* なし */ }
-showTab(['tm', 'insta', 'kaikei'].includes(firstTab) ? firstTab : 'cup');
+showTab('home');
