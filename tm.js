@@ -3,6 +3,7 @@
 import { TM_GRADES, VENUES, venueOf, PLAYERS, playersText, tmDefaults, tmGradeOf, tmPrepare } from './lib/tm.js';
 import { tmPdf } from './lib/tm-pdf.js';
 import { loadImages } from './lib/images.js';
+import { normTime, timeField } from './lib/time-input.js';
 
 const KEY = 'sport-ai:tm:v1';
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -124,9 +125,9 @@ export function renderTM(root, ui) {
   on('#tm-us', (el) => { S.us = el.value; });
   on('#tm-date', (el) => { const m = el.value.match(/(\d+)-(\d+)-(\d+)/); if (m) { S.year = +m[1]; S.month = +m[2]; S.day = +m[3]; } else { S.month = null; } });
   $('#tm-holiday').addEventListener('change', (e) => { S.holiday = e.target.checked; update(); });
-  on('#tm-open', (el) => { S.open = el.value.trim().replace('：', ':'); });
-  on('#tm-close', (el) => { S.close = el.value.trim().replace('：', ':'); });
-  on('#tm-arrive', (el) => { S.arrive = el.value.trim().replace('：', ':'); });
+  on('#tm-open', (el) => { S.open = normTime(el.value); });
+  on('#tm-close', (el) => { S.close = normTime(el.value); });
+  on('#tm-arrive', (el) => { S.arrive = normTime(el.value); });
   $('#tm-place').addEventListener('change', (e) => {
     const v = venueOf(e.target.value);
     S.place = v.name; S.car = v.car; $('#tm-car').value = v.car;
@@ -137,12 +138,13 @@ export function renderTM(root, ui) {
   on('#tm-brk', (el) => { S.brk = +el.value || 0; slot(); });
   on('#tm-extra', (el) => { S.extra = el.value.trim(); });
   $('#tm-players').addEventListener('change', (e) => { S.players = e.target.value ? Number(e.target.value) : ''; update(); });
-  on('#tm-start', (el) => { S.start = el.value.trim().replace('：', ':'); });
+  on('#tm-start', (el) => { S.start = normTime(el.value); });
   on('#tm-match', (el) => { S.matchMin = +el.value || 0; });
   on('#tm-gap', (el) => { S.gap = +el.value || 0; });
   $('#tm-count').addEventListener('change', (e) => { S.count = +e.target.value; update(); });
   on('#tm-car', (el) => { S.car = el.value; });
-  on('#tm-rain', (el) => { S.rain = el.value.trim().replace('：', ':'); });
+  on('#tm-rain', (el) => { S.rain = normTime(el.value); });
+  ['#tm-open', '#tm-close', '#tm-arrive', '#tm-start', '#tm-rain'].forEach((id) => timeField($(id)));
   on('#tm-contact', (el) => { S.contact = el.value.trim(); });
   on('#tm-notes', (el) => { S.extraNotes = el.value; });
   update();

@@ -5,6 +5,7 @@ import { readYoukou, PLAYERS_RE } from './lib/youkou.js';
 import { defaultsFor, defaultNotes, fromYoukou, prepare, slotOf, methodText, othersText, STD_FEE } from './lib/tournament.js';
 import { buildCupPdfs, PDF_FILES, fileTag } from './lib/cup-pdf.js';
 import { writeZip } from './lib/zip.js';
+import { normTime, timeField } from './lib/time-input.js';
 
 const KEY = 'sport-ai:v1';
 const $ = (s, el = document) => el.querySelector(s);
@@ -264,8 +265,8 @@ function bind() {
   const on = (id, fn) => { const el = $(id); if (el) el.addEventListener('input', (e) => { fn(e.target); update(); }); };
   on('#f-title', (el) => { S.title = el.value; });
   on('#f-date', (el) => { const m = el.value.match(/(\d+)-(\d+)-(\d+)/); if (m) { S.year = +m[1]; S.month = +m[2]; S.day = +m[3]; } else { S.month = null; } });
-  on('#f-open', (el) => { S.open = el.value.trim(); });
-  on('#f-close', (el) => { S.close = el.value.trim(); if (S.format === 'two3') { S.exchange = S.exchange.replace(/～[\d:]+$/, `～${S.close}`); const x = $('#f-exchange'); if (x) x.value = S.exchange; } });
+  on('#f-open', (el) => { S.open = normTime(el.value); });
+  on('#f-close', (el) => { S.close = normTime(el.value); if (S.format === 'two3') { S.exchange = S.exchange.replace(/～[\d:]+$/, `～${S.close}`); const x = $('#f-exchange'); if (x) x.value = S.exchange; } });
   on('#f-place', (el) => { S.place = el.value; });
   on('#f-target', (el) => { S.target = el.value; });
   on('#f-fee', (el) => { S.fee = el.value; });
@@ -277,7 +278,8 @@ function bind() {
   on('#f-courts', (el) => { S.courts = +el.value; });
   on('#f-lg1', (el) => { S.leagues = [el.value, S.leagues[1]]; renderTeams(); });
   on('#f-lg2', (el) => { S.leagues = [S.leagues[0], el.value]; renderTeams(); });
-  on('#f-start', (el) => { S.start = el.value.trim().replace('：', ':'); });
+  on('#f-start', (el) => { S.start = normTime(el.value); });
+  ['#f-open', '#f-close', '#f-start'].forEach((id) => timeField($(id)));
   on('#f-match', (el) => { S.matchMin = +el.value || 0; });
   on('#f-gap', (el) => { S.gap = +el.value || 0; });
   on('#f-fgap', (el) => { S.finalsGap = +el.value || 0; });
