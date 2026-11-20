@@ -234,20 +234,25 @@ input[type="password"] { width: 100%; border: 1px solid #ccc; border-radius: 6px
   --accent: #6a1bd6;       /* チームの紫（アクセント） */
   --disp: "Bahnschrift", "Avenir Next Condensed", "Arial Narrow", "Helvetica Neue", Impact, sans-serif;
 }
-body.is-home { background: #f7fbff; }
+body { background: #f7fbff; }
 
-/* 上の帯：トップのときは空になじませる */
-body.is-home .top { background: var(--sky-1); color: var(--ink); }
-body.is-home .top::after { display: none; }
+/* 上の帯：どのページもトップと同じ青空。各タブでは下の背景へ空がとけるようにする */
+.top { background: linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 62%, #f7fbff 100%); color: var(--ink); }
+.top::before { content: ""; position: absolute; top: -20%; bottom: -20%; right: 18%; width: 2px; background: rgba(255, 255, 255, .9); transform: skewX(-20deg); box-shadow: 18px 0 0 rgba(255, 255, 255, .55), 36px 0 0 rgba(106, 27, 214, .25); pointer-events: none; }
+.top::after { right: 6%; top: 22px; width: 150px; height: 30px; border: none; border-radius: 40px; background: rgba(255, 255, 255, .8); box-shadow: -70px 46px 0 -6px rgba(255, 255, 255, .55); }
+header .emblem { filter: drop-shadow(0 6px 10px rgba(13, 34, 64, .18)); }
+header .logo { color: var(--ink); text-shadow: none; }
+header .logo span { color: var(--accent); }
+header .bar { background: var(--ink); width: 2px; }
+header h1 { color: var(--ink); }
+header small { color: rgba(13, 34, 64, .65); }
+nav button { background: rgba(255, 255, 255, .55); border-color: rgba(255, 255, 255, .9); color: var(--ink); backdrop-filter: blur(6px); }
+nav button.active { background: var(--ink); border-color: var(--ink); color: var(--white); box-shadow: 0 6px 14px rgba(13, 34, 64, .2); }
+nav button:disabled { color: rgba(13, 34, 64, .4); }
+@media (max-width: 640px) { .top::after { display: none; } .top::before { right: 4%; } }
+body.is-home .top { background: var(--sky-1); }
+body.is-home .top::before, body.is-home .top::after { display: none; }
 body.is-home header, body.is-home nav { max-width: 1120px; }
-body.is-home header .emblem { filter: drop-shadow(0 6px 10px rgba(13, 34, 64, .18)); }
-body.is-home header .logo { color: var(--ink); text-shadow: none; }
-body.is-home header .logo span { color: var(--accent); }
-body.is-home header .bar { background: var(--ink); width: 2px; }
-body.is-home header h1 { color: var(--ink); }
-body.is-home header small { color: rgba(13, 34, 64, .65); }
-body.is-home nav button { background: rgba(255, 255, 255, .55); border-color: rgba(255, 255, 255, .9); color: var(--ink); backdrop-filter: blur(6px); }
-body.is-home nav button.active { background: var(--ink); border-color: var(--ink); color: var(--white); box-shadow: 0 6px 14px rgba(13, 34, 64, .2); }
 body.is-home main { max-width: none; padding: 0 0 40px; overflow-x: hidden; }
 .wrap { max-width: 1120px; margin: 0 auto; padding-left: 20px; padding-right: 20px; }
 
