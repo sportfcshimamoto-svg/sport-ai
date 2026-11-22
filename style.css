@@ -69,6 +69,11 @@ textarea { resize: vertical; min-height: 60px; }
 .tsel select:disabled { color: #bbb; background: #f4f4f4; }
 .tsel-c { font-weight: bold; }
 .grid > div > .tsel { display: flex; }
+/* チーム名の欄＋「▼ 選ぶ」（lib/team-memory.js） */
+.team-field { display: flex; gap: 6px; align-items: center; min-width: 0; }
+.team-field input { flex: 1 1 auto; min-width: 0; }
+.team-field .team-pick { flex: none; width: 6.2em; padding: 8px 6px; font-size: 14px; background: var(--main-soft); color: var(--main-dark); font-weight: bold; border-color: transparent; cursor: pointer; }
+.teams .team-field .team-pick { padding: 6px 4px; }
 /* 覚えたチームの整理 */
 .team-mgr { margin-top: 14px; font-size: 14px; }
 .team-mgr summary { cursor: pointer; color: var(--main-dark); font-weight: bold; }

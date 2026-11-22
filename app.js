@@ -6,7 +6,7 @@ import { defaultsFor, defaultNotes, fromYoukou, prepare, slotOf, methodText, oth
 import { buildCupPdfs, PDF_FILES, fileTag } from './lib/cup-pdf.js';
 import { writeZip } from './lib/zip.js';
 import { normTime, timeField } from './lib/time-input.js';
-import { LIST_ID, teamDatalist, refreshDatalist, rememberTeam, cityOf, teamManager, bindTeamManager } from './lib/team-memory.js';
+import { teamField, refreshPickers, bindPickers, rememberTeam, cityOf, teamManager, bindTeamManager } from './lib/team-memory.js';
 
 const KEY = 'sport-ai:v1';
 const $ = (s, el = document) => el.querySelector(s);
@@ -103,9 +103,8 @@ function render() {
   <section class="card">
     <h2><span class="num">3</span>参加チーム</h2>
     <p class="hint">${S.format === 'two3' ? `上の3チームが「${esc(S.leagues[0])}」、下の3チームが「${esc(S.leagues[1])}」になります。` : '並び順で対戦の順番が決まります（これまでのSPORT CUPと同じ順番）。'}市町は要項の「参加チーム」に（ ）で入ります。空でもかまいません。</p>
-    <p class="hint">一度入れたチームは、次から欄の ▼（スマホは欄を押す）で選べます。選ぶと、前に入れた市町も入ります。TMタブで入れた相手も出ます。</p>
+    <p class="hint">「▼ 選ぶ」で、よく使うチームから選べます（選ぶと市町も入ります）。新しいチームは欄に打ちこむと、次から「▼ 選ぶ」に出ます。TMタブで入れた相手も出ます。</p>
     <table class="teams" id="teams"></table>
-    ${teamDatalist()}
     <div class="btn-row"><button class="btn btn-sub btn-small" id="btn-addteam">＋ チームを足す</button></div>
     <div id="teammgr">${teamManager()}</div>
   </section>
@@ -129,7 +128,7 @@ function renderTeams() {
   $('#teams').innerHTML = S.teams.map((t, i) => `<tr>
     <td class="no">${i + 1}</td>
     ${S.format === 'two3' ? `<td class="lg">${i < 3 ? esc(S.leagues[0]) : i < 6 ? esc(S.leagues[1]) : '（使いません）'}</td>` : ''}
-    <td class="tn"><input type="text" data-team="${i}" list="${LIST_ID}" autocomplete="off" value="${esc(t)}" placeholder="チーム名"></td>
+    <td class="tn">${teamField(`data-team="${i}"`, t, 'チーム名')}</td>
     <td class="city"><input type="text" data-city="${i}" value="${esc(S.cities[i] || '')}" placeholder="例：高槻市" aria-label="市町"></td>
     <td class="ops">
       <button class="btn btn-sub btn-small" data-up="${i}" ${i === 0 ? 'disabled' : ''} title="上へ">↑</button>
@@ -301,7 +300,7 @@ function bind() {
     update();
   });
   // 欄から出たとき（▼で選んだときも）：チームを覚える。市町が空なら、前に覚えた市町を入れる
-  const showTeams = () => { refreshDatalist(document); const open = $('#teammgr details')?.open; $('#teammgr').innerHTML = teamManager(); if (open) $('#teammgr details').open = true; };
+  const showTeams = () => { refreshPickers($('#teams')); const open = $('#teammgr details')?.open; $('#teammgr').innerHTML = teamManager(); if (open) $('#teammgr details').open = true; };
   $('#teams').addEventListener('change', (e) => {
     const t = e.target.dataset.team, c = e.target.dataset.city;
     if (t != null) {
@@ -317,6 +316,7 @@ function bind() {
     showTeams();
   });
   bindTeamManager($('#teammgr'), showTeams);
+  bindPickers($('#teams'));
   $('#teams').addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
     const swap = (i, j) => { [S.teams[i], S.teams[j]] = [S.teams[j], S.teams[i]]; [S.cities[i], S.cities[j]] = [S.cities[j], S.cities[i]]; };

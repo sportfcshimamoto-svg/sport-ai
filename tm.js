@@ -4,7 +4,7 @@ import { TM_GRADES, VENUES, venueOf, PLAYERS, playersText, tmDefaults, tmGradeOf
 import { tmPdf } from './lib/tm-pdf.js';
 import { loadImages } from './lib/images.js';
 import { normTime, timeField } from './lib/time-input.js';
-import { LIST_ID, teamDatalist, refreshDatalist, rememberTeam, teamManager, bindTeamManager } from './lib/team-memory.js';
+import { teamField, refreshPickers, bindPickers, rememberTeam, teamManager, bindTeamManager } from './lib/team-memory.js';
 
 const KEY = 'sport-ai:tm:v1';
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -35,7 +35,7 @@ export function renderTM(root, ui) {
     <div class="grid">
       <div><label>学年</label><select id="tm-grade">${TM_GRADES.map((g) => `<option value="${g.id}" ${g.id === S.grade ? 'selected' : ''}>${g.target}</option>`).join('')}</select></div>
       <div><label>対象 <small>（お知らせに書く字）</small></label><input type="text" id="tm-target" value="${esc(S.target)}"></div>
-      <div><label>相手チーム</label><input type="text" id="tm-opp" list="${LIST_ID}" autocomplete="off" value="${esc(S.opponent)}" placeholder="例：松原SS">${teamDatalist([S.us])}</div>
+      <div><label>相手チーム</label>${teamField('id="tm-opp"', S.opponent, '例：松原SS', [S.us])}</div>
       <div><label>こちらのチーム名</label><input type="text" id="tm-us" value="${esc(S.us)}"></div>
       <div><label>日にち</label><input type="date" id="tm-date" value="${dateVal()}"></div>
       <div><label>&nbsp;</label><label class="check"><input type="checkbox" id="tm-holiday" ${S.holiday ? 'checked' : ''}>祝日（「月・祝」と書く）</label></div>
@@ -43,7 +43,7 @@ export function renderTM(root, ui) {
       <div><label>何時以降にお越しください</label><input type="text" id="tm-arrive" value="${esc(S.arrive)}" placeholder="9:00"></div>
       <div class="wide"><label>会場</label><select id="tm-place">${VENUES.map((v) => `<option ${v.name === S.place ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select></div>
     </div>
-    <p class="hint">相手チームは、一度入れると次から欄の ▼（スマホは欄を押す）で選べます。大会タブで入れたチームも出ます。</p>
+    <p class="hint">相手チームは「▼ 選ぶ」で、よく使うチームから選べます（新しいチームは欄に打ちこむ。次から「▼ 選ぶ」に出ます）。大会タブで入れたチームも出ます。</p>
     <div id="tm-teammgr">${teamManager()}</div>
   </section>
 
@@ -126,9 +126,10 @@ export function renderTM(root, ui) {
   });
   on('#tm-target', (el) => { S.target = el.value; });
   on('#tm-opp', (el) => { S.opponent = el.value; });
-  const showTeams = () => { refreshDatalist(root, [S.us]); const open = $('#tm-teammgr details')?.open; $('#tm-teammgr').innerHTML = teamManager(); if (open) $('#tm-teammgr details').open = true; };
+  const showTeams = () => { refreshPickers(root); const open = $('#tm-teammgr details')?.open; $('#tm-teammgr').innerHTML = teamManager(); if (open) $('#tm-teammgr details').open = true; };
   $('#tm-opp').addEventListener('change', (e) => { rememberTeam(e.target.value, undefined, { use: true }); showTeams(); });
   bindTeamManager($('#tm-teammgr'), showTeams);
+  bindPickers(root);
   on('#tm-us', (el) => { S.us = el.value; });
   on('#tm-date', (el) => { const m = el.value.match(/(\d+)-(\d+)-(\d+)/); if (m) { S.year = +m[1]; S.month = +m[2]; S.day = +m[3]; } else { S.month = null; } });
   $('#tm-holiday').addEventListener('change', (e) => { S.holiday = e.target.checked; update(); });
