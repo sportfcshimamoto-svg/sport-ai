@@ -410,6 +410,9 @@ async function showTab(name) {
     if (name === 'tm') {
       const { renderTM } = await import('./tm.js');
       renderTM($('#app'), { toast, download });
+    } else if (name === 'invite') {
+      const { renderInvite } = await import('./invite.js');
+      renderInvite($('#app'), { toast, download });
     } else if (name === 'insta') {
       const { renderInsta } = await import('./insta.js');
       renderInsta($('#app'), { toast, download });
@@ -452,12 +455,14 @@ function tabFailed(name, err) {
 const ICONS = {
   cup: '<path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 14v4M8 20h8"/>',
   tm: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5l3.6 2.6-1.4 4.2H9.8l-1.4-4.2z"/><path d="M12 3.5v4M15.6 10.1l4-1.3M14.2 14.3l2.4 3.4M9.8 14.3l-2.4 3.4M8.4 10.1l-4-1.3"/>',
+  invite: '<path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17.5H4A1.5 1.5 0 0 1 2.5 16V7A1.5 1.5 0 0 1 4 5.5z"/><path d="M7 10h10M7 13.5h6"/>',
   insta: '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r=".6" fill="currentColor"/>',
   kaikei: '<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h4"/><path d="M16 3.5l-9 2.5"/>',
 };
 const MENU = [
   { tab: 'cup', en: 'TOURNAMENT', name: '大会（SPORT CUP）', desc: '要項・リーグ表・タイムスケジュール・掲示用・優秀選手賞・審判カードを、まとめてPDFに。' },
   { tab: 'tm', en: 'TRAINING MATCH', name: 'TM（練習試合）', desc: '相手・日にち・会場を入れるだけで、TMのお知らせがPDFで完成。' },
+  { tab: 'invite', en: 'INVITATION', name: 'お誘い（LINE）', desc: '大会・TMのお誘いの文を、日にちや学年を選ぶだけで。たくさんの相手にLINEで送る。' },
   { tab: 'insta', en: 'INSTAGRAM', name: 'Instagram', desc: '練習の様子や体験の募集の、投稿文と画像をつくる。' },
   { tab: 'kaikei', en: 'ACCOUNTING', name: '会計', desc: '立替の入力と、返金の一覧・チェック。' },
 ];

@@ -79,6 +79,16 @@ textarea { resize: vertical; min-height: 60px; }
 .teams-left .left { color: var(--red); white-space: nowrap; }
 .teams-left .ok { color: var(--main-dark); font-weight: bold; }
 .share-box { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--line); }
+/* お誘い（LINE）タブ（invite.js） */
+.inv-item { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 14px; margin-top: 14px; background: var(--white); }
+.inv-item.past { background: #f4f4f4; }
+.inv-head { display: flex; align-items: center; gap: 8px; }
+.inv-no { font-size: 20px; font-weight: bold; color: var(--main-deep); }
+.inv-kind { font-size: 13px; font-weight: bold; padding: 2px 10px; border-radius: 999px; background: var(--main-soft); color: var(--main-dark); }
+.inv-kind.cup { background: #fff4c2; color: #8a6d00; }
+.inv-past { font-size: 12px; color: var(--muted); }
+.inv-del { margin-left: auto; }
+.inv-out { white-space: pre-wrap; word-break: break-word; background: #f3f8f3; border: 1px solid #cfe5cf; border-radius: 12px; padding: 14px 16px; font-family: inherit; font-size: 15px; line-height: 1.7; margin: 0 0 12px; }
 /* 覚えたチームの整理 */
 .team-mgr { margin-top: 14px; font-size: 14px; }
 .team-mgr summary { cursor: pointer; color: var(--main-dark); font-weight: bold; }
