@@ -105,7 +105,8 @@ function render() {
     <p class="hint">${S.format === 'two3' ? `上の3チームが「${esc(S.leagues[0])}」、下の3チームが「${esc(S.leagues[1])}」になります。` : '並び順で対戦の順番が決まります（これまでのSPORT CUPと同じ順番）。'}市町は要項の「参加チーム」に（ ）で入ります。空でもかまいません。</p>
     <p class="hint">「▼ 選ぶ」で、よく使うチームから選べます（選ぶと市町も入ります）。新しいチームは欄に打ちこむと、次から「▼ 選ぶ」に出ます。TMタブで入れた相手も出ます。</p>
     <table class="teams" id="teams"></table>
-    <div class="btn-row"><button class="btn btn-sub btn-small" id="btn-addteam">＋ チームを足す</button></div>
+    <p class="teams-left" id="teams-left"></p>
+    <div class="btn-row"><button class="btn btn-sub btn-small" id="btn-addteam">＋ チームを足す</button><button class="btn btn-sub btn-small" id="btn-clearteams">SPORT以外のチームを消す</button></div>
     <div id="teammgr">${teamManager()}</div>
   </section>
 
@@ -138,8 +139,17 @@ function renderTeams() {
 }
 
 /** 入力が変わったら、確認と書き出しの欄だけ描き直す */
+const isUs = (t) => /SPORT/i.test(t);   // SPORT FC・SPORT FC X など（消さない）
+/** 「決まっている ○チーム／あと ○チーム」（あと何チーム募集するかがわかるように） */
+function showTeamsLeft() {
+  const el = $('#teams-left'); if (!el) return;
+  const filled = S.teams.filter((t) => t.trim()).length, empty = S.teams.length - filled;
+  el.innerHTML = `決まっている：<b>${filled}チーム</b>（全部で${S.teams.length}チーム）　${empty ? `<span class="left">あと <b>${empty}チーム</b></span>` : '<span class="ok">全部そろっています</span>'}`;
+}
+
 function update() {
   save();
+  showTeamsLeft();
   const problems = check();
   const ready = !problems.length;
   let html = problems.length ? `<div class="notice">${problems.map(esc).join('<br>')}</div>` : '';
@@ -325,6 +335,15 @@ function bind() {
     if (b.dataset.del) { S.teams.splice(+b.dataset.del, 1); S.cities.splice(+b.dataset.del, 1); }
     renderTeams(); update();
   });
+  // SPORT以外のチームを消す（2026年11月22日 本人の希望）。並び・チームの数・SPORTの場所はそのまま。市町も消す
+  $('#btn-clearteams').onclick = () => {
+    const n = S.teams.filter((t) => t.trim() && !isUs(t)).length;
+    if (!n) { toast('消すチームはありません'); return; }
+    if (!confirm(`SPORT以外の ${n}チーム（名前と市町）を消します。よろしいですか？`)) return;
+    S.teams.forEach((t, i) => { if (!isUs(t)) { S.teams[i] = ''; S.cities[i] = ''; } });
+    renderTeams(); update();
+    toast(`${n}チームを消しました。「▼ 選ぶ」から選びなおせます`);
+  };
   $('#btn-addteam').onclick = () => { S.teams.push(''); renderTeams(); update(); $(`[data-team="${S.teams.length - 1}"]`).focus(); };
 }
 

@@ -74,6 +74,10 @@ textarea { resize: vertical; min-height: 60px; }
 .team-field input { flex: 1 1 auto; min-width: 0; }
 .team-field .team-pick { flex: none; width: 6.2em; padding: 8px 6px; font-size: 14px; background: var(--main-soft); color: var(--main-dark); font-weight: bold; border-color: transparent; cursor: pointer; }
 .teams .team-field .team-pick { padding: 6px 4px; }
+/* 参加チームの数（決まっている／あと○チーム） */
+.teams-left { margin: 10px 0 0; font-size: 14px; }
+.teams-left .left { color: var(--red); white-space: nowrap; }
+.teams-left .ok { color: var(--main-dark); font-weight: bold; }
 /* 覚えたチームの整理 */
 .team-mgr { margin-top: 14px; font-size: 14px; }
 .team-mgr summary { cursor: pointer; color: var(--main-dark); font-weight: bold; }
