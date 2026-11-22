@@ -418,3 +418,51 @@ main { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
 body.is-home main { padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
 .wrap { padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
 #toast { bottom: calc(28px + env(safe-area-inset-bottom)); }
+
+/* 日程タブ（2026年11月22日） */
+.nt .card h2 { flex-wrap: wrap; row-gap: 0; }
+.nt-sub { font-size: 13px; font-weight: normal; color: var(--muted); letter-spacing: 0; flex-basis: 100%; padding-left: 44px; }
+.nt-date { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.nt-date input { max-width: 220px; }
+.nt-date b { font-size: 20px; color: var(--main-deep); }
+.nt-sets { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.nt-set { display: flex; flex-direction: column; gap: 6px; }
+.nt-set-btn { text-align: left; border: 2px solid var(--main-soft); background: var(--white); border-radius: 12px; padding: 10px 12px; font-family: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 2px; transition: border-color .15s, transform .1s; }
+.nt-set-btn:hover { border-color: var(--main); }
+.nt-set-btn:active { transform: scale(.98); }
+.nt-set-btn b { font-size: 16px; color: var(--main-deep); margin-bottom: 2px; }
+.nt-set-btn small { font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 6px; }
+.nt-set-btn i, .nt-ev i { width: 10px; height: 10px; border-radius: 50%; flex: none; display: inline-block; }
+.nt-grades { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.nt-g { border: 2px solid var(--c); background: var(--white); color: var(--c); border-radius: 999px; padding: 6px 14px; font-size: 15px; font-weight: bold; font-family: inherit; cursor: pointer; min-width: 64px; }
+.nt-g.on { background: var(--c); color: var(--white); }
+.nt-day { font-weight: bold; color: var(--main-deep); margin: 12px 0 4px; border-bottom: 2px solid var(--main-soft); padding-bottom: 2px; }
+.nt-ev { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 15px; }
+.nt-ev span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.nt-ev small { color: var(--muted); }
+.nt-edit { margin: 2px 0 10px 18px; padding: 10px 12px; border: 1px solid var(--line, #d6e4f5); border-radius: 10px; background: var(--soft, #f4f9ff); }
+.nt-edit > label:first-child { margin-top: 0; }
+.nt-month { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 4px; }
+.nt-month b { font-size: 17px; color: var(--main-deep); }
+.nt-draft { border: 2px solid var(--main); }
+.nt-slots-card { border: 2px solid var(--main); }
+.nt-slot { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.nt-slot > input { width: 22px; height: 22px; margin-top: 3px; accent-color: var(--main); flex: none; }
+.nt-slot-main { flex: 1; min-width: 0; }
+.nt-slot-head { font-size: 15px; }
+.nt-slot-head b { color: var(--main-deep); margin-right: 4px; }
+.nt-slot-head span { white-space: nowrap; }
+.nt-slot-head em { font-style: normal; font-size: 12px; color: #2e7d32; background: #eefbea; border: 1px solid #bfe5b4; border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+.nt-slot select { margin: 4px 0; max-width: 260px; }
+.nt-slot-lines { display: flex; flex-direction: column; }
+.nt-slot-lines small { font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.nt-slot-lines i { width: 10px; height: 10px; border-radius: 50%; flex: none; display: inline-block; }
+.nt-slot.done { opacity: .6; }
+.nt-past { opacity: .5; }
+.nt-warn { margin: 4px 0 0; font-size: 13px; color: #8a5a00; background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 8px; padding: 4px 10px; }
+@media (max-width: 560px) {
+  .nt-sets { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .nt-set-btn { padding: 8px 10px; }
+  .nt-set-btn b { font-size: 15px; }
+  .nt-set-btn small { font-size: 12px; gap: 4px; }
+}

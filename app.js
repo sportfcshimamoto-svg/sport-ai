@@ -419,6 +419,9 @@ async function showTab(name) {
     } else if (name === 'kaikei') {
       const { renderKaikei } = await import('./kaikei.js');
       renderKaikei($('#app'), { toast, download });
+    } else if (name === 'nittei') {
+      const { renderNittei } = await import('./nittei.js');
+      renderNittei($('#app'), { toast, download });
     } else if (name === 'home') {
       renderHome();
     } else {
@@ -458,6 +461,7 @@ const ICONS = {
   invite: '<path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17.5H4A1.5 1.5 0 0 1 2.5 16V7A1.5 1.5 0 0 1 4 5.5z"/><path d="M7 10h10M7 13.5h6"/>',
   insta: '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r=".6" fill="currentColor"/>',
   kaikei: '<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h4"/><path d="M16 3.5l-9 2.5"/>',
+  nittei: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M8 14h2M12 14h2M16 14h.01M8 17h2M12 17h2"/>',
 };
 const MENU = [
   { tab: 'cup', en: 'TOURNAMENT', name: '大会（SPORT CUP）', desc: '要項・リーグ表・タイムスケジュール・掲示用・優秀選手賞・審判カードを、まとめてPDFに。' },
@@ -465,6 +469,7 @@ const MENU = [
   { tab: 'invite', en: 'INVITATION', name: 'お誘い（LINE）', desc: '大会・TMのお誘いの文を、日にちや学年を選ぶだけで。たくさんの相手にLINEで送る。' },
   { tab: 'insta', en: 'INSTAGRAM', name: 'Instagram', desc: '練習の様子や体験の募集の、投稿文と画像をつくる。' },
   { tab: 'kaikei', en: 'ACCOUNTING', name: '会計', desc: '立替の入力と、返金の一覧・チェック。' },
+  { tab: 'nittei', en: 'SCHEDULE', name: '日程', desc: '日にちを選んで「いつものセット」を押すだけで、Googleカレンダーに練習の予定が入る。' },
 ];
 const icon = (k) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]}</svg>`;
 function renderHome() {
