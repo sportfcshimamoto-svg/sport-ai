@@ -1,7 +1,7 @@
 // SPORT AI事務局：お誘い（LINE）タブ（2026年11月22日 本人の希望）
 // 大会やTMを、たくさんの相手チームに同時にLINEで誘うときの文をつくる。全員に同じ文。
 // 入力はこの端末の中にだけ保存する。
-import { GRADE_NAMES, PLACES, QUICK_NOTES, DEFAULT_GREET, DEFAULT_CLOSE, DEFAULT_STYLE, INTROS, autoIntro, newItem, sorted, isPast, inviteText, fromCup, fromTM } from './lib/invite.js';
+import { GRADE_NAMES, PLACES, DEFAULT_GREET, DEFAULT_CLOSE, DEFAULT_STYLE, INTROS, autoIntro, newItem, sorted, isPast, inviteText, fromCup, fromTM } from './lib/invite.js';
 import { timeField } from './lib/time-input.js';
 
 const KEY = 'sport-ai:invite:v1';
@@ -23,7 +23,8 @@ async function copyText(text, ui, msg) {
  */
 export function renderInvite(root, ui) {
   const S = { ...DEFAULT_STYLE, greet: DEFAULT_GREET, close: DEFAULT_CLOSE, items: [], ...(readJSON(KEY) || {}) };
-  delete S.intro; delete S.cupWord;   // 前の版の「はじめの行」（自由に書く欄）・大会の呼び方
+  delete S.intro; delete S.cupWord; delete S.style;   // 前の版の「はじめの行」（自由に書く欄）・大会の呼び方・1行にまとめる書き方
+  S.items.forEach((it) => { delete it.note; });          // 前の版の「急ではございますが…」の欄
   if (!S.items.length) S.items = [newItem('tm')];
   const $ = (s) => root.querySelector(s);
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { /* 保存できなくても使える */ } };
@@ -51,8 +52,6 @@ export function renderInvite(root, ui) {
         <div><label>大会の名前 <small>（学年のあとにつく）</small></label><input type="text" data-f="cupName" value="${esc(it.cupName)}"></div>
         <div><label>参加費 <small>（空なら書かない）</small></label><input type="text" data-f="fee" value="${esc(it.fee)}"></div>
         <div><label>全部で何チーム <small>（空なら書かない）</small></label><input type="number" min="2" max="12" data-f="teams" value="${esc(it.teams)}"></div>` : ''}
-        <div class="wide"><label>日にちの上に書くひとこと <small>（なくてよい）</small></label>
-          <div class="team-field"><input type="text" data-f="note" value="${esc(it.note)}" placeholder="例：急ではございますが…"><select class="team-pick" data-quick="note"><option value="">▼ 選ぶ</option>${QUICK_NOTES.map((q) => opt(q, q)).join('')}</select></div></div>
         <div class="wide"><label>会場の下に書くこと <small>（なくてよい）</small></label><input type="text" data-f="memo" value="${esc(it.memo)}" placeholder="例：※④の2年生と同一会場で2面開催します。"></div>
       </div>
     </div>`;
@@ -75,7 +74,6 @@ export function renderInvite(root, ui) {
   <section class="card">
     <h2><span class="num">2</span>書き方</h2>
     <div class="grid">
-      <div><label>1つのお誘いの書き方</label><select id="inv-style">${opt('lines', '行ごとに分ける', S.style === 'lines')}${opt('oneline', '1行にまとめる', S.style === 'oneline')}</select></div>
       <div class="wide"><label class="check"><input type="checkbox" id="inv-month" ${S.monthMode ? 'checked' : ''}>全部が同じ月なら「9月の〜」にまとめて、日にちは「12日（土）」と日だけ書く</label></div>
       <div class="wide"><label class="check"><input type="checkbox" id="inv-at" ${S.at ? 'checked' : ''}>会場の前に「@」をつける</label></div>
       <div class="wide"><label>はじめのあいさつ <small>（いらなければ空に）</small></label><input type="text" id="inv-greet" value="${esc(S.greet)}"></div>
@@ -116,7 +114,6 @@ export function renderInvite(root, ui) {
   $('#inv-items').addEventListener('change', (e) => {
     const t = e.target, it = itemOf(t);
     if (!it) return;
-    if (t.dataset.quick) { if (t.value) { it[t.dataset.quick] = t.value; redraw(); } return; }
     const f = t.dataset.f;
     if (f === 'date') { it.date = t.value; redraw(); return; }   // 日にち順の番号が変わるので描き直す
     if (f === 'holiday') it.holiday = t.checked;
@@ -159,7 +156,6 @@ export function renderInvite(root, ui) {
 
   // 書き方
   const on = (id, fn, ev = 'input') => $(id).addEventListener(ev, (e) => { fn(e.target); update(); });
-  on('#inv-style', (el) => { S.style = el.value; }, 'change');
   on('#inv-month', (el) => { S.monthMode = el.checked; }, 'change');
   on('#inv-at', (el) => { S.at = el.checked; }, 'change');
   on('#inv-greet', (el) => { S.greet = el.value; });
