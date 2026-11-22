@@ -24,7 +24,7 @@ async function copyText(text, ui, msg) {
 export function renderInvite(root, ui) {
   const S = { ...DEFAULT_STYLE, greet: DEFAULT_GREET, close: DEFAULT_CLOSE, items: [], ...(readJSON(KEY) || {}) };
   delete S.intro; delete S.cupWord; delete S.style;   // 前の版の「はじめの行」（自由に書く欄）・大会の呼び方・1行にまとめる書き方
-  S.items.forEach((it) => { delete it.note; });          // 前の版の「急ではございますが…」の欄
+  S.items.forEach((it) => { delete it.note; delete it.cupName; });   // 前の版の「急ではございますが…」・大会の名前の欄
   if (!S.items.length) S.items = [newItem('tm')];
   const $ = (s) => root.querySelector(s);
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { /* 保存できなくても使える */ } };
@@ -49,7 +49,6 @@ export function renderInvite(root, ui) {
           ${placeOther ? `<input type="text" data-f="place" value="${esc(it.place)}" placeholder="会場の名前" style="margin-top:6px">` : ''}</div>
         <div><label>人数</label><select data-f="players">${opt('', '書かない', !it.players)}${[5, 6, 7, 8].map((p) => opt(p, `${p}人制`, p == it.players)).join('')}</select></div>
         ${it.kind === 'cup' ? `
-        <div><label>大会の名前 <small>（学年のあとにつく）</small></label><input type="text" data-f="cupName" value="${esc(it.cupName)}"></div>
         <div><label>参加費 <small>（空なら書かない）</small></label><input type="text" data-f="fee" value="${esc(it.fee)}"></div>
         <div><label>全部で何チーム <small>（空なら書かない）</small></label><input type="number" min="2" max="12" data-f="teams" value="${esc(it.teams)}"></div>` : ''}
         <div class="wide"><label>会場の下に書くこと <small>（なくてよい）</small></label><input type="text" data-f="memo" value="${esc(it.memo)}" placeholder="例：※④の2年生と同一会場で2面開催します。"></div>
