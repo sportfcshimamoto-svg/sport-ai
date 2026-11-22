@@ -1,7 +1,7 @@
 // SPORT AI事務局：日程タブ
 // 日にちを選んで「いつものセット」を押す → Googleカレンダー（SPORTの活動予定）に、いつもの件名・終日・学年の色で入る。
 // Googleの側：gas/nittei/Code.gs。この端末に残すのは、合言葉（「覚えておく」のとき）だけ。
-import { api, apiUrl, GRADES, COLOR_CSS, PLACES, normPlace, parseTitle, titleOf, colorOf, gradeLabel, splitItems, withSundayKids, shortSlotItems, guessPreset, isShortYodoiko, dayInfo, cupOf, cupTimes, dropBusy, fitsItems, planTM, matchCounts, matchDays, tmSlotsOf, TM_GRADES, ymd, parseYmd, mdw, pad } from './lib/nittei.js';
+import { api, apiUrl, GRADES, COLOR_CSS, PLACES, normPlace, parseTitle, titleOf, colorOf, gradeLabel, splitItems, withSundayKids, shortSlotItems, guessPreset, isShortYodoiko, dayInfo, cupOf, cupTimes, dropBusy, fitsItems, planTM, matchCounts, matchDays, tmSlotsOf, TM_GRADES, coachLineText, lineUrl, ymd, parseYmd, mdw, pad } from './lib/nittei.js';
 import { timeField } from './lib/time-input.js';
 import { teamField, bindPickers, rememberTeam } from './lib/team-memory.js';
 
@@ -39,6 +39,7 @@ export function renderNittei(host, ui) {
     pass: get('pass'), info: null, date: nextWeekend(), draft: [], form: emptyForm(),
     month: monthOf(nextWeekend()), events: null, editSets: false, busy: '',
     slots: null, slotNote: '', slotPick: {}, slotOn: {}, tmPick: {}, edit: null,
+    line: null,   // コーチ担当に送る文を手で直したとき { month, text }
   };
   const $ = (s) => root.querySelector(s);
 
@@ -364,6 +365,7 @@ export function renderNittei(host, ui) {
       <section class="card nt-slots-card"><h2><span class="num">1</span>スプレッドシートで取れた枠 <small class="nt-sub">「時間」がピンクの枠。チェックして押すだけ</small></h2><div id="nt-slots"></div></section>
       ${dateHtml()}${presetHtml()}${oneHtml()}${draftHtml()}
       <section class="card"><h2><span class="num">5</span>カレンダーに入っている予定</h2><div id="nt-list"></div></section>
+      <section class="card"><h2><span class="num">6</span>コーチ担当にLINEで知らせる <small class="nt-sub">この月のTM・カップ戦・大会と、これからあたる日程。送る前に書き足せます</small></h2><div id="nt-line"></div></section>
       ${cupHtml()}`;
     timeField($('#nt-start'), { blank: true });
     timeField($('#nt-end'), { blank: true });
@@ -514,8 +516,37 @@ export function renderNittei(host, ui) {
     paintBusy();
   }
 
+  // ----- コーチ担当に知らせる（2026年11月23日 本人）-----
+  /** 今日から先の、この月の試合。手で直した文があれば、それを使う */
+  const lineText = () => (S.line && S.line.month === S.month ? S.line.text : coachLineText(allEvents(), S.month, ymd(new Date())));
+  function drawLine() {
+    const box = $('#nt-line');
+    if (!box) return;
+    const [, m] = S.month.split('-').map(Number);
+    if (!S.events) { box.innerHTML = '<p class="hint">読みこんでいます…</p>'; return; }
+    const text = lineText();
+    box.innerHTML = `<p class="hint">${m}月の分です（今日より前の日は出しません）。月は上の ◀ ▶ で変えられます。</p>
+      <textarea id="nt-line-text" rows="14">${esc(text)}</textarea>
+      <div class="btn-row">
+        <a class="btn btn-line" id="nt-line-send" href="${esc(lineUrl(text))}" target="_blank" rel="noopener">LINEでコーチ担当に送る</a>
+        <button class="btn btn-sub" data-act="lineCopy">文をコピー</button>
+        ${S.line && S.line.month === S.month ? '<button class="btn btn-sub btn-small" data-act="lineReset">文を作りなおす</button>' : ''}
+      </div>
+      <p class="hint">「これからあたる日程」は、TM予定・相手の書いていないTM・スポルト杯の日です。LINEで送り先のグループを選んでください。パソコンでは「文をコピー」してLINEに貼りつけてください。</p>`;
+  }
+  async function copyLine() {
+    const text = lineText();
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+      const t = Object.assign(document.createElement('textarea'), { value: text });
+      document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove();
+    }
+    ui.toast('文をコピーしました。LINEに貼りつけて送ってください');
+  }
+
   function drawList() {
     drawSlots();
+    drawLine();
     const box = $('#nt-list');
     if (!box) return;
     const [y, m] = S.month.split('-').map(Number);
@@ -564,6 +595,8 @@ export function renderNittei(host, ui) {
     else if (a === 'editEvent') startEdit(b.dataset.id);
     else if (a === 'cancelEdit') { S.edit = null; drawList(); }
     else if (a === 'saveEdit') saveEdit();
+    else if (a === 'lineCopy') copyLine();
+    else if (a === 'lineReset') { S.line = null; drawLine(); }
     else if (a === 'egrade') {
       const g = b.dataset.g, list = S.edit.grades;
       S.edit.grades = list.includes(g) ? list.filter((x) => x !== g) : [...list, g];
@@ -583,6 +616,13 @@ export function renderNittei(host, ui) {
     if (S.edit && t.id.startsWith('nt-e-')) {
       const k = { 'nt-e-start': 'start', 'nt-e-end': 'end', 'nt-e-note': 'note', 'nt-e-other': 'other', 'nt-e-title': 'title', 'nt-e-date': 'date' }[t.id];
       if (k) { S.edit[k] = t.value; paintEditPreview(); }
+      return;
+    }
+    if (t.id === 'nt-line-text') {
+      const first = !(S.line && S.line.month === S.month);
+      S.line = { month: S.month, text: t.value };
+      const a = $('#nt-line-send'); if (a) a.href = lineUrl(t.value);
+      if (first) { const row = t.nextElementSibling; if (row && !row.querySelector('[data-act="lineReset"]')) row.insertAdjacentHTML('beforeend', '<button class="btn btn-sub btn-small" data-act="lineReset">文を作りなおす</button>'); }
       return;
     }
     if (t.id === 'nt-start') S.form.start = t.value;
