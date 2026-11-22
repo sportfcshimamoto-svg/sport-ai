@@ -1,7 +1,7 @@
 // SPORT AI事務局：日程タブ
 // 日にちを選んで「いつものセット」を押す → Googleカレンダー（SPORTの活動予定）に、いつもの件名・終日・学年の色で入る。
 // Googleの側：gas/nittei/Code.gs。この端末に残すのは、合言葉（「覚えておく」のとき）だけ。
-import { api, apiUrl, GRADES, COLOR_CSS, PLACES, normPlace, parseTitle, titleOf, colorOf, gradeLabel, splitItems, withSundayKids, shortSlotItems, guessPreset, isShortYodoiko, dayInfo, cupOf, cupTimes, dropBusy, fitsItems, ymd, parseYmd, mdw, pad } from './lib/nittei.js';
+import { api, apiUrl, GRADES, COLOR_CSS, PLACES, normPlace, parseTitle, titleOf, colorOf, gradeLabel, splitItems, withSundayKids, shortSlotItems, guessPreset, isShortYodoiko, dayInfo, cupOf, cupTimes, dropBusy, fitsItems, planTM, matchCounts, matchDays, tmSlotsOf, TM_GRADES, ymd, parseYmd, mdw, pad } from './lib/nittei.js';
 import { timeField } from './lib/time-input.js';
 import { teamField, bindPickers, rememberTeam } from './lib/team-memory.js';
 
@@ -23,9 +23,14 @@ function nextWeekend() {
   return ymd(d);
 }
 const monthOf = (s) => String(s).slice(0, 7);
-const emptyForm = () => ({ place: PLACES[0], other: '', grades: [], start: '9:00', end: '10:45', note: '', vs: '' });
-/** メモ＋対戦相手（2026年11月23日 本人「TMの日は対戦相手も」）。相手だけ入れたときはメモを「TM」に →「4年 TM 高槻如是FC 9:00-12:00 …」 */
-const formNote = (f) => [f.note.trim() || (f.vs.trim() ? 'TM' : ''), f.vs.trim()].filter(Boolean).join(' ');
+const emptyForm = () => ({ place: PLACES[0], other: '', grades: [], start: '9:00', end: '10:45', kind: '', note: '', vs: '' });
+/** 種類（2026年11月23日 本人：TMとカップ戦を選べるように） */
+const KINDS = [{ id: '', label: '練習' }, { id: 'TM', label: 'TM' }, { id: 'カップ戦', label: 'カップ戦' }];
+/**
+ * 件名の学年のあとに入れる言葉：種類＋メモ＋対戦相手（同じ日 本人「TMでもカップ戦でも対戦相手を」）
+ * →「4年 TM 高槻如是FC 9:00-12:00 …」「4年 カップ戦 高槻如是FC 9:00-15:00 …」。種類なしで相手だけ入れたときは「TM」
+ */
+const formNote = (f) => [f.kind || (f.vs.trim() && !f.note.trim() ? 'TM' : ''), f.note.trim(), f.vs.trim()].filter(Boolean).join(' ');
 
 export function renderNittei(host, ui) {
   host.innerHTML = '<div class="nt"></div>';
@@ -33,7 +38,7 @@ export function renderNittei(host, ui) {
   const S = {
     pass: get('pass'), info: null, date: nextWeekend(), draft: [], form: emptyForm(),
     month: monthOf(nextWeekend()), events: null, editSets: false, busy: '',
-    slots: null, slotNote: '', slotPick: {}, slotOn: {}, edit: null,
+    slots: null, slotNote: '', slotPick: {}, slotOn: {}, tmPick: {}, edit: null,
   };
   const $ = (s) => root.querySelector(s);
 
@@ -96,7 +101,12 @@ export function renderNittei(host, ui) {
   const presetItems = (p) => p.items.map((it) => ({ ...it, place: normPlace(it.place || p.place) }));
   /** その日にそのセットで入る予定（日曜は KIDs 9:00-10:00 も。KIDs・U15 は1件ずつ） */
   /** その日にもう入っている予定の件名（入れるカレンダー＋テストのあいだは本物のカレンダーも） */
-  const titlesOn = (date) => [...(S.events || []), ...(S.live || [])].filter((e) => e.date === date).map((e) => e.title);
+  // 何日もつづく予定（「5年大会」12/5〜12/6 など）は、毎日に数える（2026年11月23日）。end はGoogleの側が返す最後の日
+  const covers = (e, date) => e.date <= date && date <= (e.end || e.date);
+  const allEvents = () => [...(S.events || []), ...(S.live || [])];
+  const titlesOn = (date) => allEvents().filter((e) => covers(e, date)).map((e) => e.title);
+  /** その予定が入っている日の一覧 */
+  const daysOfEv = (e) => { const out = []; for (let d = parseYmd(e.date); d && ymd(d) <= (e.end || e.date) && out.length < 31; d.setDate(d.getDate() + 1)) out.push(ymd(d)); return out; };
   const cupsOn = (date) => (S.info?.cups || []).filter((c) => c.date === date);
   /** その日の練習を変えること：抜く学年（スポルト杯・カップ戦・TMなど）とスポルト杯の時間（2026年11月23日 本人） */
   const dayOf = (date) => dayInfo(titlesOn(date), cupsOn(date));
@@ -106,12 +116,39 @@ export function renderNittei(host, ui) {
    */
   function itemsFor(p, date, slot) {
     const day = dayOf(date);
-    let items = withSundayKids(shortSlotItems(presetItems(p), slot), date, slot, cupDays());
+    // 割り振ったTM（2026年11月23日 本人）。その学年は練習から抜く
+    const tm = slot ? (tmPlan().get(slotKey(slot)) || []) : [];
+    const busy = new Set([...day.busy, ...tm.map((x) => x.grade)]);
+    let items = withSundayKids(shortSlotItems(presetItems(p), slot), date, slot, kidsMoveDays());
     if (day.cup) items = cupTimes(items, day.cup);
-    return splitItems(dropBusy(items, day.busy));
+    const tmItems = tm.map((x) => ({ grades: [x.grade], start: x.start, end: x.end, place: normPlace(slot.place), tmPlan: true }));
+    return splitItems([...dropBusy(items, busy), ...tmItems]);
+  }
+  /**
+   * TMの割り振り（その月の取れた枠ぜんぶ）。1か月で試合の回数がそろうように、同じなら上の学年。
+   * 手でプルダウンを変えたところ（S.tmPick）はそのまま
+   */
+  function tmPlan() {
+    if (!S.slots || !S.info) return new Map();
+    const evs = allEvents();
+    return planTM(S.slots, {
+      titlesOn, keyOf: slotKey, picks: S.tmPick,
+      isCup: (d) => cupDays().has(d),
+      counts: matchCounts(evs, S.month),
+      days: matchDays(evs, true),
+    });
+  }
+  /** KIDsを日曜から前の土曜に移す日：スポルト杯の日曜と、1年生がTMの日曜 */
+  function kidsMoveDays() {
+    const out = cupDays();
+    for (const [k, list] of tmPlan()) {
+      const date = k.split('|')[0];
+      if (parseYmd(date)?.getDay() === 0 && list.some((x) => x.grade === '1')) out.add(date);
+    }
+    return out;
   }
   /** スポルトカップの日（アプリの「スポルトカップ」で入れた日と、カレンダーに「SPORT杯」がある日） */
-  const cupDays = () => new Set([...(S.info?.cups || []).map((c) => c.date), ...[...(S.events || []), ...(S.live || [])].filter((e) => cupOf(e.title)).map((e) => e.date)]);
+  const cupDays = () => new Set([...(S.info?.cups || []).map((c) => c.date), ...allEvents().filter((e) => cupOf(e.title)).flatMap(daysOfEv)]);
   /** その枠に、セットの予定が時間どおりに入るか */
   function fitsFor(s, p) {
     if (!p) return false;
@@ -397,13 +434,15 @@ export function renderNittei(host, ui) {
       <h2><span class="num">4</span>1つずつ足す <small class="nt-sub">TM・カップ戦など、いつもとちがう日</small></h2>
       <label>学年 <small>（いくつでも）</small></label>
       <div class="nt-grades">${GRADES.map((g) => `<button class="nt-g ${f.grades.includes(g.id) ? 'on' : ''}" style="--c:${g.css}" data-act="grade" data-g="${g.id}">${g.label}</button>`).join('')}</div>
+      <label>種類</label>
+      <div class="nt-kinds">${KINDS.map((k) => `<button class="nt-kind ${f.kind === k.id ? 'on' : ''}" data-act="kind" data-k="${esc(k.id)}">${esc(k.label)}</button>`).join('')}</div>
+      ${f.kind ? `<label>対戦相手 <small>（▼ 選ぶ にないときは、欄に書いてください）</small></label>${teamField('id="nt-vs" maxlength="40"', f.vs, '例：高槻如是FC')}` : ''}
       <div class="grid">
         <div><label>はじまり</label><input id="nt-start" value="${esc(f.start)}"></div>
         <div><label>おわり</label><input id="nt-end" value="${esc(f.end)}"></div>
         <div><label>場所</label><select id="nt-place">${PLACES.map((p) => `<option ${p === f.place ? 'selected' : ''}>${esc(p)}</option>`).join('')}<option value="${OTHER}" ${f.place === OTHER ? 'selected' : ''}>そのほか（書く）</option></select>
           ${f.place === OTHER ? `<input type="text" id="nt-other" value="${esc(f.other)}" placeholder="例：下鳥羽" style="margin-top:6px">` : ''}</div>
-        <div><label>メモ <small>（なくてよい）</small></label><input type="text" id="nt-note" value="${esc(f.note)}" placeholder="例：TM／カップ戦" maxlength="30"></div>
-        <div><label>対戦相手 <small>（TMの日。なくてよい）</small></label>${teamField('id="nt-vs" maxlength="40"', f.vs, '例：高槻如是FC')}</div>
+        <div><label>メモ <small>（なくてよい）</small></label><input type="text" id="nt-note" value="${esc(f.note)}" placeholder="例：午後／○○カップ" maxlength="30"></div>
       </div>
       <p class="hint" id="nt-preview">${preview ? `→ <b>${esc(preview)}</b>` : '学年をえらぶと、件名がここに出ます'}</p>
       <div class="btn-row"><button class="btn btn-sub" data-act="addOne">＋ 入れる予定に足す</button></div>
@@ -437,25 +476,40 @@ export function renderNittei(host, ui) {
     if (!S.slots) { box.innerHTML = nav + '<p class="hint">スプレッドシートを読んでいます…（少し時間がかかります）</p>'; return; }
     if (!S.slots.length) { box.innerHTML = nav + `<p class="hint">${esc(S.slotNote || 'この月は、ピンクの枠がありません。')}</p>`; return; }
     const sets = S.info.presets;
+    const plan = tmPlan();
     const rows = S.slots.map((s) => {
       const k = esc(slotKey(s)), pick = pickOf(s), p = sets[pick], done = slotDone(s), day = dayOf(s.date);
       const its = p ? itemsFor(p, s.date, s) : [];
       const why = [day.cup ? `スポルト杯${day.cup.end ? ` ${day.cup.start}-${day.cup.end}` : ''}の日${day.cup.end ? (/^1[6-9]|^2/.test(day.cup.end) ? '：練習は13:30から' : '：練習は13:00-14:30') : ''}` : '',
         day.busy.size ? `${gradeLabel([...day.busy])}はスポルト杯・カップ戦・TMなどがあるので抜きます` : ''].filter(Boolean).join('。');
       const lines = p ? its.map((it) => `<small><i style="background:${COLOR_CSS[colorOf(it.grades)] || '#999'}"></i>${esc(titleOf({ ...it, place: normPlace(it.place) === normPlace(s.place) ? '' : it.place }))}</small>`).join('') : '';
+      // TMの割り振り（学年はプルダウンで変えられる）
+      const subs = day.cup ? [] : tmSlotsOf(s), tm = plan.get(slotKey(s)) || [];
+      const tmRows = subs.map((sub, i) => {
+        const pk = `${slotKey(s)}|${i}`, got = tm.find((x) => x.i === i);
+        const inCal = titlesOn(s.date).some((t) => /TM/i.test(t) && t.replace(/[：]/g, ':').includes(`${sub.start}-${sub.end}`));
+        const none = !inCal && !got && !(pk in S.tmPick);
+        return `<label class="nt-tm">TM ${esc(sub.start)}-${esc(sub.end)}
+          ${inCal ? '<em>カレンダーに入っています</em>' : none ? '<em>（入れられる学年がありません）</em>' : `<select data-tmpick="${esc(pk)}">${TM_GRADES.map((g) => `<option value="${g}" ${got && got.grade === g ? 'selected' : ''}>${g}年</option>`).join('')}<option value="" ${got ? '' : 'selected'}>（入れない）</option></select>`}</label>`;
+      }).join('');
       return `<div class="nt-slot ${done ? 'done' : ''}">
         <input type="checkbox" data-slot="${k}" ${slotOn(s) && its.length ? 'checked' : ''} ${p && its.length ? '' : 'disabled'} aria-label="${esc(mdw(s.date))} を入れる">
         <div class="nt-slot-main">
           <div class="nt-slot-head"><b>${esc(mdw(s.date))}</b> ${esc(normPlace(s.place) || s.ground || 'その他')} <span>${esc(s.start)}-${esc(s.end)}</span>${done ? ' <em>カレンダーに入っています</em>' : ''}</div>
           <select data-slotpick="${k}" aria-label="使うセット">${sets.map((x, i) => `<option value="${i}" ${i === pick ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}<option value="-1" ${pick < 0 ? 'selected' : ''}>（入れない）</option></select>
           <div class="nt-slot-lines">${lines}</div>
+          ${tmRows ? `<div class="nt-tms">${tmRows}</div>` : ''}
           ${why ? `<p class="hint nt-why">${esc(why)}</p>` : ''}
           ${p && !its.length ? '<p class="hint">この日は、入れる練習がありません</p>' : p && !fitsFor(s, p) ? '<p class="nt-warn">⚠ セットの時間が、取れた時間からはみ出しています。セットを変えるか、チェックを外して手で足してください</p>' : ''}
         </div>
       </div>`;
     }).join('');
     const n = S.slots.filter((s) => slotOn(s) && sets[pickOf(s)] && itemsFor(sets[pickOf(s)], s.date, s).length).length;
-    box.innerHTML = nav + rows + `<div class="btn-row"><button class="btn btn-main btn-big" data-act="sendSlots" data-busy ${n ? '' : 'disabled'}>チェックした ${n} 日分をカレンダーに入れる</button></div>
+    // この月の試合の回数（カレンダー＋この割り振り）
+    const cnt = matchCounts(allEvents(), S.month);
+    for (const list of plan.values()) list.forEach((x) => { if (x.grade in cnt) cnt[x.grade]++; });
+    const sum = `<p class="nt-count">この月の試合（TM・カップ戦・大会・スポルト杯。割り振りもふくむ）：${TM_GRADES.map((g) => `<b>${g}年</b> ${cnt[g]}回`).join('　')}</p>`;
+    box.innerHTML = nav + sum + rows + `<div class="btn-row"><button class="btn btn-main btn-big" data-act="sendSlots" data-busy ${n ? '' : 'disabled'}>チェックした ${n} 日分をカレンダーに入れる</button></div>
       <p class="hint">セットがちがう日は、プルダウンで変えられます。TMなど、いつもとちがう日はチェックを外して、下で手で足してください。</p>`;
     paintBusy();
   }
@@ -491,6 +545,7 @@ export function renderNittei(host, ui) {
     else if (a === 'preset') usePreset(i);
     else if (a === 'delPreset') deletePreset(i);
     else if (a === 'editSets') { S.editSets = !S.editSets; draw(); }
+    else if (a === 'kind') { S.form.kind = b.dataset.k; if (!S.form.kind) S.form.vs = ''; draw(); }
     else if (a === 'grade') {
       const g = b.dataset.g, list = S.form.grades;
       S.form.grades = list.includes(g) ? list.filter((x) => x !== g) : [...list, g];
@@ -543,6 +598,7 @@ export function renderNittei(host, ui) {
     if (t.id === 'nt-e-place') { S.edit.place = t.value; drawList(); return; }
     if (t.id === 'nt-e-date') { S.edit.date = t.value; return; }
     if (t.dataset.slot) { S.slotOn[t.dataset.slot] = t.checked; drawSlots(); return; }
+    if (t.dataset.tmpick) { S.tmPick[t.dataset.tmpick] = t.value; drawSlots(); return; }
     if (t.dataset.slotpick) { S.slotPick[t.dataset.slotpick] = Number(t.value); delete S.slotOn[t.dataset.slotpick]; drawSlots(); return; }
     if (t.id === 'nt-date' && parseYmd(t.value)) {
       S.date = t.value;
