@@ -78,6 +78,7 @@ textarea { resize: vertical; min-height: 60px; }
 .teams-left { margin: 10px 0 0; font-size: 14px; }
 .teams-left .left { color: var(--red); white-space: nowrap; }
 .teams-left .ok { color: var(--main-dark); font-weight: bold; }
+.share-box { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--line); }
 /* 覚えたチームの整理 */
 .team-mgr { margin-top: 14px; font-size: 14px; }
 .team-mgr summary { cursor: pointer; color: var(--main-dark); font-weight: bold; }

@@ -107,6 +107,10 @@ function render() {
     <table class="teams" id="teams"></table>
     <p class="teams-left" id="teams-left"></p>
     <div class="btn-row"><button class="btn btn-sub btn-small" id="btn-addteam">＋ チームを足す</button><button class="btn btn-sub btn-small" id="btn-clearteams">SPORT以外のチームを消す</button></div>
+    <div class="share-box">
+      <p class="hint">ほかのコーチに「あと何チームか」を知らせるときは、下のボタンで文を作って、LINEのグループに送ってください（入れた内容は、この端末の中にしか保存されないため）。</p>
+      <div class="btn-row"><button class="btn btn-main btn-small" id="btn-shareteams">📤 LINEなどで送る</button><button class="btn btn-sub btn-small" id="btn-copyteams">📋 文をコピー</button></div>
+    </div>
     <div id="teammgr">${teamManager()}</div>
   </section>
 
@@ -145,6 +149,34 @@ function showTeamsLeft() {
   const el = $('#teams-left'); if (!el) return;
   const filled = S.teams.filter((t) => t.trim()).length, empty = S.teams.length - filled;
   el.innerHTML = `決まっている：<b>${filled}チーム</b>（全部で${S.teams.length}チーム）　${empty ? `<span class="left">あと <b>${empty}チーム</b></span>` : '<span class="ok">全部そろっています</span>'}`;
+}
+
+/** ほかのコーチに送る文（2026年11月22日 本人の希望：あと何チームかを知らせる） */
+const NL = String.fromCharCode(10);
+function recruitText() {
+  const wd = S.month && S.day ? '日月火水木金土'[new Date(S.year, S.month - 1, S.day).getDay()] : '';
+  const head = [String(S.title || 'SPORT CUP').trim(), S.target ? `（${String(S.target).trim()}）` : ''].join('');
+  const when = S.month && S.day ? `${S.month}月${S.day}日（${wd}）${S.open ? `　${S.open}〜${S.close || ''}` : ''}` : '日にち：未定';
+  const filled = S.teams.map((t, i) => [t.trim(), (S.cities[i] || '').trim()]).filter(([t]) => t);
+  const left = S.teams.length - filled.length;
+  return [
+    `【${head}】`,
+    when,
+    ...(S.place ? [`場所：${String(S.place).trim()}`] : []),
+    '',
+    `決まっている：${filled.length}チーム（全部で${S.teams.length}チーム）`,
+    ...filled.map(([t, c]) => `・${t}${c ? `（${c}）` : ''}`),
+    '',
+    left ? `★あと${left}チーム募集中です` : '★全チームそろいました',
+  ].join(NL).trim();
+}
+async function copyText(text, msg) {
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const t = Object.assign(document.createElement('textarea'), { value: text });
+    document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove();
+  }
+  toast(msg);
 }
 
 function update() {
@@ -344,6 +376,15 @@ function bind() {
     renderTeams(); update();
     toast(`${n}チームを消しました。「▼ 選ぶ」から選びなおせます`);
   };
+  // あと何チームかをLINEなどで送る（スマホは共有の画面、パソコンなど共有できないときはコピー）
+  $('#btn-shareteams').onclick = async () => {
+    const text = recruitText();
+    if (navigator.share) {
+      try { await navigator.share({ text }); return; } catch (err) { if (err?.name === 'AbortError') return; }
+    }
+    copyText(text, '文をコピーしました。LINEに貼りつけて送ってください');
+  };
+  $('#btn-copyteams').onclick = () => copyText(recruitText(), '文をコピーしました。LINEに貼りつけて送ってください');
   $('#btn-addteam').onclick = () => { S.teams.push(''); renderTeams(); update(); $(`[data-team="${S.teams.length - 1}"]`).focus(); };
 }
 
