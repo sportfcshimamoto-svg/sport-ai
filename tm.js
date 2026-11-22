@@ -4,6 +4,7 @@ import { TM_GRADES, VENUES, venueOf, PLAYERS, playersText, tmDefaults, tmGradeOf
 import { tmPdf } from './lib/tm-pdf.js';
 import { loadImages } from './lib/images.js';
 import { normTime, timeField } from './lib/time-input.js';
+import { LIST_ID, teamDatalist, refreshDatalist, rememberTeam, teamManager, bindTeamManager } from './lib/team-memory.js';
 
 const KEY = 'sport-ai:tm:v1';
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -22,6 +23,7 @@ export function renderTM(root, ui) {
     S.players = m ? Number(String(m[1]).replace(/[５-８]/, (c) => '５６７８'.indexOf(c) + 5)) : (S.players || '');
     S.extra = String(S.extra || '').replace(/[5-8５-８]人制/, '').trim();
   }
+  if (S.opponent) rememberTeam(S.opponent);   // 前に入れていた相手も候補に
   if (!VENUES.some((v) => v.name === S.place)) { S.place = VENUES[0].name; S.car = VENUES[0].car; }   // 前に自由に入れた会場は、3か所のどれかに
   const $ = (s) => root.querySelector(s);
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { /* 保存できなくても使える */ } };
@@ -33,14 +35,16 @@ export function renderTM(root, ui) {
     <div class="grid">
       <div><label>学年</label><select id="tm-grade">${TM_GRADES.map((g) => `<option value="${g.id}" ${g.id === S.grade ? 'selected' : ''}>${g.target}</option>`).join('')}</select></div>
       <div><label>対象 <small>（お知らせに書く字）</small></label><input type="text" id="tm-target" value="${esc(S.target)}"></div>
-      <div><label>相手チーム</label><input type="text" id="tm-opp" value="${esc(S.opponent)}" placeholder="例：松原SS"></div>
+      <div><label>相手チーム</label><input type="text" id="tm-opp" list="${LIST_ID}" autocomplete="off" value="${esc(S.opponent)}" placeholder="例：松原SS">${teamDatalist([S.us])}</div>
       <div><label>こちらのチーム名</label><input type="text" id="tm-us" value="${esc(S.us)}"></div>
       <div><label>日にち</label><input type="date" id="tm-date" value="${dateVal()}"></div>
       <div><label>&nbsp;</label><label class="check"><input type="checkbox" id="tm-holiday" ${S.holiday ? 'checked' : ''}>祝日（「月・祝」と書く）</label></div>
-      <div><label>時間 <small>（書かないときは空のまま）</small></label><div class="inline"><input type="text" id="tm-open" value="${esc(S.open)}" placeholder="11:00">〜<input type="text" id="tm-close" value="${esc(S.close)}" placeholder="14:30"></div></div>
+      <div class="wide"><label>時間 <small>（書かないときは「－」のまま）</small></label><div class="inline"><input type="text" id="tm-open" value="${esc(S.open)}" placeholder="11:00">〜<input type="text" id="tm-close" value="${esc(S.close)}" placeholder="14:30"></div></div>
       <div><label>何時以降にお越しください</label><input type="text" id="tm-arrive" value="${esc(S.arrive)}" placeholder="9:00"></div>
       <div class="wide"><label>会場</label><select id="tm-place">${VENUES.map((v) => `<option ${v.name === S.place ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select></div>
     </div>
+    <p class="hint">相手チームは、一度入れると次から欄の ▼（スマホは欄を押す）で選べます。大会タブで入れたチームも出ます。</p>
+    <div id="tm-teammgr">${teamManager()}</div>
   </section>
 
   <section class="card">
@@ -122,6 +126,9 @@ export function renderTM(root, ui) {
   });
   on('#tm-target', (el) => { S.target = el.value; });
   on('#tm-opp', (el) => { S.opponent = el.value; });
+  const showTeams = () => { refreshDatalist(root, [S.us]); const open = $('#tm-teammgr details')?.open; $('#tm-teammgr').innerHTML = teamManager(); if (open) $('#tm-teammgr details').open = true; };
+  $('#tm-opp').addEventListener('change', (e) => { rememberTeam(e.target.value, undefined, { use: true }); showTeams(); });
+  bindTeamManager($('#tm-teammgr'), showTeams);
   on('#tm-us', (el) => { S.us = el.value; });
   on('#tm-date', (el) => { const m = el.value.match(/(\d+)-(\d+)-(\d+)/); if (m) { S.year = +m[1]; S.month = +m[2]; S.day = +m[3]; } else { S.month = null; } });
   $('#tm-holiday').addEventListener('change', (e) => { S.holiday = e.target.checked; update(); });
@@ -144,7 +151,8 @@ export function renderTM(root, ui) {
   $('#tm-count').addEventListener('change', (e) => { S.count = +e.target.value; update(); });
   on('#tm-car', (el) => { S.car = el.value; });
   on('#tm-rain', (el) => { S.rain = normTime(el.value); });
-  ['#tm-open', '#tm-close', '#tm-arrive', '#tm-start', '#tm-rain'].forEach((id) => timeField($(id)));
+  ['#tm-open', '#tm-close', '#tm-arrive', '#tm-rain'].forEach((id) => timeField($(id), { blank: true }));   // 空なら書かない欄
+  timeField($('#tm-start'));
   on('#tm-contact', (el) => { S.contact = el.value.trim(); });
   on('#tm-notes', (el) => { S.extraNotes = el.value; });
   update();

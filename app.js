@@ -6,6 +6,7 @@ import { defaultsFor, defaultNotes, fromYoukou, prepare, slotOf, methodText, oth
 import { buildCupPdfs, PDF_FILES, fileTag } from './lib/cup-pdf.js';
 import { writeZip } from './lib/zip.js';
 import { normTime, timeField } from './lib/time-input.js';
+import { LIST_ID, teamDatalist, refreshDatalist, rememberTeam, cityOf, teamManager, bindTeamManager } from './lib/team-memory.js';
 
 const KEY = 'sport-ai:v1';
 const $ = (s, el = document) => el.querySelector(s);
@@ -53,6 +54,7 @@ const basePlayers = () => (methodText({ ...S, players: '' }, doc)[0]?.match(PLAY
 
 // ---------- 画面 ----------
 function render() {
+  S.teams.forEach((t, i) => { if (t.trim()) rememberTeam(t, (S.cities[i] || '').trim() || undefined); });   // 前に入れていたチームも候補に
   $('#app').innerHTML = `
   <section class="card">
     <h2><span class="num">1</span>要項を読み込む</h2>
@@ -73,7 +75,7 @@ function render() {
       <div><label>学年</label><select id="f-grade">${GRADES.map((g) => `<option value="${g.id}" ${g.id === S.grade ? 'selected' : ''}>${g.label}（${g.target}）</option>`).join('')}</select></div>
       <div><label>大会名</label><input type="text" id="f-title" value="${esc(S.title)}"></div>
       <div><label>日にち</label><input type="date" id="f-date" value="${S.month ? `${S.year}-${String(S.month).padStart(2, '0')}-${String(S.day).padStart(2, '0')}` : ''}"></div>
-      <div><label>時間 <small>（要項の「日時」）</small></label><div class="inline"><input type="text" id="f-open" value="${esc(S.open)}">〜<input type="text" id="f-close" value="${esc(S.close)}"></div></div>
+      <div class="wide"><label>時間 <small>（要項の「日時」）</small></label><div class="inline"><input type="text" id="f-open" value="${esc(S.open)}">〜<input type="text" id="f-close" value="${esc(S.close)}"></div></div>
       <div class="wide"><label>場所</label><input type="text" id="f-place" value="${esc(S.place)}"></div>
       <div><label>対象</label><input type="text" id="f-target" value="${esc(S.target)}"></div>
       <div><label>参加費</label><input type="text" id="f-fee" value="${esc(S.fee)}"></div>
@@ -101,8 +103,11 @@ function render() {
   <section class="card">
     <h2><span class="num">3</span>参加チーム</h2>
     <p class="hint">${S.format === 'two3' ? `上の3チームが「${esc(S.leagues[0])}」、下の3チームが「${esc(S.leagues[1])}」になります。` : '並び順で対戦の順番が決まります（これまでのSPORT CUPと同じ順番）。'}市町は要項の「参加チーム」に（ ）で入ります。空でもかまいません。</p>
+    <p class="hint">一度入れたチームは、次から欄の ▼（スマホは欄を押す）で選べます。選ぶと、前に入れた市町も入ります。TMタブで入れた相手も出ます。</p>
     <table class="teams" id="teams"></table>
+    ${teamDatalist()}
     <div class="btn-row"><button class="btn btn-sub btn-small" id="btn-addteam">＋ チームを足す</button></div>
+    <div id="teammgr">${teamManager()}</div>
   </section>
 
   <section class="card preview">
@@ -124,7 +129,7 @@ function renderTeams() {
   $('#teams').innerHTML = S.teams.map((t, i) => `<tr>
     <td class="no">${i + 1}</td>
     ${S.format === 'two3' ? `<td class="lg">${i < 3 ? esc(S.leagues[0]) : i < 6 ? esc(S.leagues[1]) : '（使いません）'}</td>` : ''}
-    <td class="tn"><input type="text" data-team="${i}" value="${esc(t)}" placeholder="チーム名"></td>
+    <td class="tn"><input type="text" data-team="${i}" list="${LIST_ID}" autocomplete="off" value="${esc(t)}" placeholder="チーム名"></td>
     <td class="city"><input type="text" data-city="${i}" value="${esc(S.cities[i] || '')}" placeholder="例：高槻市" aria-label="市町"></td>
     <td class="ops">
       <button class="btn btn-sub btn-small" data-up="${i}" ${i === 0 ? 'disabled' : ''} title="上へ">↑</button>
@@ -295,6 +300,23 @@ function bind() {
     if (c != null) S.cities[+c] = e.target.value;
     update();
   });
+  // 欄から出たとき（▼で選んだときも）：チームを覚える。市町が空なら、前に覚えた市町を入れる
+  const showTeams = () => { refreshDatalist(document); const open = $('#teammgr details')?.open; $('#teammgr').innerHTML = teamManager(); if (open) $('#teammgr details').open = true; };
+  $('#teams').addEventListener('change', (e) => {
+    const t = e.target.dataset.team, c = e.target.dataset.city;
+    if (t != null) {
+      const i = +t, name = S.teams[i].trim();
+      if (name && !(S.cities[i] || '').trim() && cityOf(name)) {
+        S.cities[i] = cityOf(name);
+        const ce = $(`[data-city="${i}"]`); if (ce) ce.value = S.cities[i];
+        update();
+      }
+      rememberTeam(name, (S.cities[i] || '').trim() || undefined, { use: true });
+    }
+    if (c != null && (S.teams[+c] || '').trim()) rememberTeam(S.teams[+c], S.cities[+c] || '');
+    showTeams();
+  });
+  bindTeamManager($('#teammgr'), showTeams);
   $('#teams').addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
     const swap = (i, j) => { [S.teams[i], S.teams[j]] = [S.teams[j], S.teams[i]]; [S.cities[i], S.cities[j]] = [S.cities[j], S.cities[i]]; };
@@ -323,7 +345,7 @@ async function showTab(name) {
   window.scrollTo(0, 0);
   document.body.classList.toggle('is-home', name === 'home');
   // スマホの上の帯（時計のところ）の色：トップは空色、ほかは今までの紫
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', name === 'home' ? '#7cc8ff' : '#361778');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#7cc8ff');
   try {
     if (name === 'tm') {
       const { renderTM } = await import('./tm.js');
