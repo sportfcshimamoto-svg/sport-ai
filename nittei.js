@@ -140,7 +140,7 @@ export function renderNittei(host, ui) {
       days: matchDays(evs, true),
     });
   }
-  /** KIDsを日曜から前の土曜に移す日：スポルト杯の日曜、1年生がTMの日曜、ピンクの枠がない日曜（2026年11月23日 本人） */
+  /** KIDsを日曜から前の土曜に移す日：スポルト杯の日曜、1年生がTM・大会などの日曜（土曜も1年の試合なら移さない）、ピンクの枠がない日曜（2026年11月23日 本人） */
   function kidsMoveDays() {
     const out = cupDays();
     if (S.slots) {
@@ -150,9 +150,16 @@ export function renderNittei(host, ui) {
         if (d.getDay() === 0 && !has.has(ymd(d))) out.add(ymd(d));
       }
     }
-    for (const [k, list] of tmPlan()) {
-      const date = k.split('|')[0];
-      if (parseYmd(date)?.getDay() === 0 && list.some((x) => x.grade === '1')) out.add(date);
+    // 1年生がTM・大会など（カレンダーにあるものと、TMの割り振り）の日曜は、KIDsを前の土曜に。
+    // ただし、その土曜にも1年生の試合があれば日曜のまま。土曜にピンクの枠がないときも日曜のまま（2026年11月23日 本人）
+    const ones = new Set(matchDays(allEvents())['1']);
+    for (const [k, list] of tmPlan()) if (list.some((x) => x.grade === '1')) ones.add(k.split('|')[0]);
+    const satSlots = S.slots ? new Set(S.slots.map((s) => s.date)) : null;
+    for (const date of ones) {
+      const d = parseYmd(date);
+      if (!d || d.getDay() !== 0) continue;
+      const sat = new Date(d); sat.setDate(d.getDate() - 1);
+      if (!ones.has(ymd(sat)) && (!satSlots || satSlots.has(ymd(sat)))) out.add(date);
     }
     return out;
   }
