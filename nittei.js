@@ -1,7 +1,7 @@
 // SPORT AI事務局：日程タブ
 // 日にちを選んで「いつものセット」を押す → Googleカレンダー（SPORTの活動予定）に、いつもの件名・終日・学年の色で入る。
 // Googleの側：gas/nittei/Code.gs。この端末に残すのは、合言葉（「覚えておく」のとき）だけ。
-import { api, apiUrl, GRADES, COLOR_CSS, PLACES, normPlace, parseTitle, titleOf, colorOf, gradeLabel, splitItems, withSundayKids, shortSlotItems, guessPreset, isShortYodoiko, dayInfo, cupOf, cupTimes, dropBusy, fitsItems, planTM, matchCounts, matchDays, tmSlotsOf, TM_GRADES, coachLineText, lineUrl, ymd, parseYmd, mdw, pad } from './lib/nittei.js';
+import { api, apiUrl, GRADES, COLOR_CSS, PLACES, normPlace, parseTitle, titleOf, colorOf, gradeLabel, splitItems, withSundayKids, withU15, shortSlotItems, guessPreset, isShortYodoiko, dayInfo, cupOf, cupTimes, dropBusy, fitsItems, planTM, matchCounts, matchDays, tmSlotsOf, TM_GRADES, coachLineText, lineUrl, ymd, parseYmd, mdw, pad } from './lib/nittei.js';
 import { timeField } from './lib/time-input.js';
 import { teamField, bindPickers, rememberTeam } from './lib/team-memory.js';
 
@@ -120,7 +120,8 @@ export function renderNittei(host, ui) {
     // 割り振ったTM（2026年11月23日 本人）。その学年は練習から抜く
     const tm = slot ? (tmPlan().get(slotKey(slot)) || []) : [];
     const busy = new Set([...day.busy, ...tm.map((x) => x.grade)]);
-    let items = withSundayKids(shortSlotItems(presetItems(p), slot), date, slot, kidsMoveDays());
+    // U15 は 4,5年と同じ時間（一小は入れない）。KIDs は日曜に、ほかの学年のはじめの1時間（2026年11月23日 本人）
+    let items = withSundayKids(withU15(shortSlotItems(presetItems(p), slot)), date, slot, kidsMoveDays());
     if (day.cup) items = cupTimes(items, day.cup);
     const tmItems = tm.map((x) => ({ grades: [x.grade], start: x.start, end: x.end, place: normPlace(slot.place), tmPlan: true }));
     return splitItems([...dropBusy(items, busy), ...tmItems]);
@@ -139,9 +140,16 @@ export function renderNittei(host, ui) {
       days: matchDays(evs, true),
     });
   }
-  /** KIDsを日曜から前の土曜に移す日：スポルト杯の日曜と、1年生がTMの日曜 */
+  /** KIDsを日曜から前の土曜に移す日：スポルト杯の日曜、1年生がTMの日曜、ピンクの枠がない日曜（2026年11月23日 本人） */
   function kidsMoveDays() {
     const out = cupDays();
+    if (S.slots) {
+      const has = new Set(S.slots.map((s) => s.date));
+      const [y, m] = S.month.split('-').map(Number);
+      for (let d = new Date(y, m - 1, 1); d.getMonth() === m - 1; d.setDate(d.getDate() + 1)) {
+        if (d.getDay() === 0 && !has.has(ymd(d))) out.add(ymd(d));
+      }
+    }
     for (const [k, list] of tmPlan()) {
       const date = k.split('|')[0];
       if (parseYmd(date)?.getDay() === 0 && list.some((x) => x.grade === '1')) out.add(date);
