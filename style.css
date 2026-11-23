@@ -489,7 +489,12 @@ body.is-home main { padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
 .ig-draft-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
 .ig-draft-head small { color: var(--muted); }
 .ig-draft-imgs { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; }
-.ig-draft-imgs img { width: min(78%, 320px); flex: none; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 10px; scroll-snap-align: start; }
+.ig-draft-imgs img, .ig-draft-imgs video, .ig-vid-wait { width: min(78%, 320px); flex: none; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 10px; scroll-snap-align: start; }
+.ig-draft-imgs video { background: #000; object-fit: contain; }
+.ig-vid-wait { display: flex; align-items: center; justify-content: center; text-align: center; background: var(--main-soft); color: var(--main-deep); font-size: 28px; line-height: 1.4; }
+.ig-vid-wait small { font-size: 13px; color: var(--muted); }
+.ig-thumb video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+.ig-vmark { position: absolute; left: 4px; bottom: 2px; font-size: 16px; text-shadow: 0 0 3px #000; }
 .ig-draft-cap { min-height: 160px; margin-top: 10px; line-height: 1.6; }
 .ig-manual > summary { cursor: pointer; font-weight: bold; color: var(--main-deep); }
 .ig-manual[open] > summary { margin-bottom: 12px; }

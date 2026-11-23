@@ -4,7 +4,7 @@
 import { instaDefaults, makeCaption, POINTS, pointOf, guessPoint } from './lib/insta.js';
 import './lib/insta-draw.js';   // globalThis.InstaDraw（AI社員の画像づくりと同じデザイン）
 import { writeZip } from './lib/zip.js';
-import { instaApi, instaApiUrl, savedPass, savePass, fileOf } from './lib/insta-api.js';
+import { instaApi, instaApiUrl, savedPass, savePass, fileOf, isVideo, sendVideo, loadVideo, VIDEO_MAX } from './lib/insta-api.js';
 
 const KEY = 'sport-ai:insta:v1';
 const MAX_PHOTOS = 10;
@@ -157,7 +157,8 @@ export function renderInsta(root, ui) {
 }
 
 // ---------- AI社員の下書き（Googleの側 gas/insta/Code.gs） ----------
-const loaded = new Map();   // id → { caption, files: File[], urls: string[] }
+const loaded = new Map();   // id → { media: [{ type:'image'|'video', file, url, …動画の情報 }] }
+const mb = (n) => (n ? `約${Math.max(1, Math.round(n / 1048576))}MB` : '大きさ不明');
 
 async function renderDrafts(box, ui) {
   if (!instaApiUrl()) { box.innerHTML = '<p class="hint">📥 AI社員の下書きは、Googleの準備ができたらここに出ます。</p>'; return; }
@@ -182,12 +183,13 @@ async function renderDrafts(box, ui) {
   const canShare = !!(navigator.canShare && navigator.share);
   box.innerHTML = `<h2>📥 AI社員の下書き <button type="button" class="ig-refresh" id="ig-reload" aria-label="新しくする">↻</button></h2>
     <div class="ig-upload">
-      <label class="drop">📷 写真を送る <small>（LINEのアルバムから保存した写真など。AI社員が使います）</small><input type="file" id="ig-up" accept="image/*" multiple></label>
+      <label class="drop">📷 写真・動画を送る <small>（何枚でもまとめて選べます。LINEのアルバムから保存したものなど。AI社員が使います）</small><input type="file" id="ig-up" accept="image/*,video/*" multiple></label>
       <div id="ig-up-panel" hidden>
         <div class="ig-thumbs" id="ig-up-thumbs"></div>
         <label for="ig-up-memo">ひとことメモ <small>（なくてもOK）</small></label>
         <textarea id="ig-up-memo" placeholder="例：3年生。試合の準備を自分たちでやっていた。相手チームのコーチにほめられた。"></textarea>
         <p class="hint">子どもの名前は書かないでください。顔が大きく写った写真は、AI社員が使わないようにしています。</p>
+        <p class="hint" id="ig-up-vhint" hidden>動画は大きいので、送るのに時間がかかります（Wi-Fiがおすすめ）。30〜60秒くらいに切ってから送ると早いです。AI社員は動画の「音」は聞けないので、声や言葉はメモに書いてください。</p>
         <div class="btn-row"><button class="btn btn-main" id="ig-up-send">送る</button><button class="btn btn-sub" id="ig-up-cancel">やめる</button></div>
       </div>
     </div>
@@ -197,7 +199,7 @@ async function renderDrafts(box, ui) {
       <div class="ig-draft-imgs" data-imgs><span class="hint">画像を読みこみ中…</span></div>
       <textarea class="ig-draft-cap" aria-label="投稿文">${esc(d.caption)}</textarea>
       <div class="btn-row">
-        <button class="btn btn-main" data-send disabled>${canShare ? '📲 インスタへ送る' : '⬇ 画像を保存'}</button>
+        <button class="btn btn-main" data-send disabled>${canShare ? '📲 インスタへ送る' : '⬇ 写真・動画を保存'}</button>
         <button class="btn btn-sub" data-copy>📋 文をコピー</button>
         <button class="btn btn-sub" data-done>✓ 投稿した</button>
       </div>
@@ -213,16 +215,42 @@ async function renderDrafts(box, ui) {
       try { await instaApi({ action: 'done', id }); ui.toast('投稿済みにしました'); loaded.delete(id); renderDrafts(box, ui); }
       catch (err) { ui.toast('できませんでした：' + err.message); }
     });
-    card.querySelector('[data-send]').addEventListener('click', async () => {
+    const sendBtn = card.querySelector('[data-send]');
+    const sendLabel = sendBtn.textContent;
+    const show = (d) => {
+      card.querySelector('[data-imgs]').innerHTML = d.media.map((m, i) => m.type === 'video'
+        ? (m.url ? `<video src="${m.url}" controls playsinline preload="metadata" aria-label="${i + 1}つ目（動画）"></video>`
+          : `<div class="ig-vid-wait">🎬 動画${m.missing ? '<br><small>見つかりません</small>' : `<br><small>${mb(m.size)}</small>`}</div>`)
+        : `<img src="${m.url}" alt="${i + 1}枚目">`).join('');
+      const waiting = d.media.some((m) => m.type === 'video' && !m.file && !m.missing);
+      sendBtn.textContent = waiting ? `▶ 動画を読みこむ（${mb(d.media.reduce((s, m) => s + (m.type === 'video' && !m.file ? m.size || 0 : 0), 0))}）` : sendLabel;
+      sendBtn.disabled = d.media.some((m) => m.missing);
+    };
+    sendBtn.addEventListener('click', async () => {
       const d = loaded.get(id);
       if (!d) return;
+      // 動画はボタンを押してから読む（大きいので、開くたびに通信しないように）。読めたら、もう一度押して送る
+      const wait = d.media.filter((m) => m.type === 'video' && !m.file);
+      if (wait.length) {
+        sendBtn.disabled = true;
+        try {
+          for (const [k, m] of wait.entries()) {
+            m.file = await loadVideo(m, (n, t) => { sendBtn.textContent = `読みこみ中… ${wait.length > 1 ? `${k + 1}本目 ` : ''}${Math.round((n / t) * 100)}%`; });
+            m.url = URL.createObjectURL(m.file);
+          }
+          ui.toast('動画を読みこみました。「インスタへ送る」を押してください');
+        } catch (err) { ui.toast('動画を読みこめませんでした：' + err.message); }
+        show(d);
+        return;
+      }
+      const files = d.media.map((m) => m.file);
       try {
-        if (canShare && navigator.canShare({ files: d.files })) {
+        if (canShare && navigator.canShare({ files })) {
           await copy(cap(), ui, '投稿文をコピーしました。インスタで貼りつけてください');
-          await navigator.share({ files: d.files });
+          await navigator.share({ files });
         } else {
-          for (const f of d.files) { ui.download(f.name, new Uint8Array(await f.arrayBuffer())); await new Promise((r) => setTimeout(r, 350)); }
-          await copy(cap(), ui, '画像を保存して、投稿文をコピーしました');
+          for (const f of files) { ui.download(f.name, new Uint8Array(await f.arrayBuffer())); await new Promise((r) => setTimeout(r, 350)); }
+          await copy(cap(), ui, '写真・動画を保存して、投稿文をコピーしました');
         }
       } catch (err) { if (err?.name !== 'AbortError') ui.toast('できませんでした：' + err.message); }
     });
@@ -232,12 +260,15 @@ async function renderDrafts(box, ui) {
         let d = loaded.get(id);
         if (!d) {
           const r = await instaApi({ action: 'get', id });
-          const files = r.images.map(fileOf);
-          d = { files, urls: files.map((f) => URL.createObjectURL(f)) };
+          const media = (r.media || r.images.map((im) => ({ type: 'image', ...im }))).map((m) => {
+            if (m.type === 'video') return { ...m };
+            const file = fileOf(m);
+            return { type: 'image', file, url: URL.createObjectURL(file) };
+          });
+          d = { media };
           loaded.set(id, d);
         }
-        card.querySelector('[data-imgs]').innerHTML = d.urls.map((u, i) => `<img src="${u}" alt="${i + 1}枚目">`).join('');
-        card.querySelector('[data-send]').disabled = false;
+        show(d);
       } catch (err) { card.querySelector('[data-imgs]').innerHTML = `<span class="notice err">${esc(err.message)}</span>`; }
     })();
   }
@@ -262,15 +293,22 @@ async function shrink(file) {
 }
 
 function setupUpload(box, ui) {
-  let picked = [];   // { file, url }
+  let picked = [];   // { file, url, video }
   const panel = box.querySelector('#ig-up-panel');
   const show = () => {
     panel.hidden = !picked.length;
-    box.querySelector('#ig-up-thumbs').innerHTML = picked.map((p, i) => `<div class="ig-thumb"><img src="${p.url}" alt="${i + 1}枚目"><button type="button" class="ig-x" data-updel="${i}" aria-label="${i + 1}枚目を外す">✕</button></div>`).join('');
+    box.querySelector('#ig-up-vhint').hidden = !picked.some((p) => p.video);
+    box.querySelector('#ig-up-thumbs').innerHTML = picked.map((p, i) => `<div class="ig-thumb">${p.video
+      ? `<video src="${p.url}#t=0.1" muted playsinline preload="metadata" aria-label="${i + 1}つ目（動画）"></video><span class="ig-vmark">🎬</span>`
+      : `<img src="${p.url}" alt="${i + 1}枚目">`}<button type="button" class="ig-x" data-updel="${i}" aria-label="${i + 1}つ目を外す">✕</button></div>`).join('');
   };
   const clear = () => { picked.forEach((p) => URL.revokeObjectURL(p.url)); picked = []; box.querySelector('#ig-up-memo').value = ''; show(); };
   box.querySelector('#ig-up').addEventListener('change', (e) => {
-    for (const f of e.target.files) picked.push({ file: f, url: URL.createObjectURL(f) });
+    for (const f of e.target.files) {
+      const video = isVideo(f);
+      if (video && f.size > VIDEO_MAX) { ui.toast(`${f.name} は大きすぎます（200MBまで）。30〜60秒くらいに切ってください`); continue; }
+      picked.push({ file: f, url: URL.createObjectURL(f), video });
+    }
     e.target.value = ''; show();
   });
   box.querySelector('#ig-up-thumbs').addEventListener('click', (e) => {
@@ -286,14 +324,16 @@ function setupUpload(box, ui) {
     let ok = 0;
     try {
       for (const p of picked) {
-        btn.textContent = `送っています… ${ok + 1}/${picked.length}`;
-        await instaApi({ action: 'addPhoto', data: await shrink(p.file), memo });
+        const label = `送っています… ${ok + 1}/${picked.length}`;
+        btn.textContent = label;
+        if (p.video) await sendVideo(p.file, memo, (n, t) => { btn.textContent = `${label}（動画 ${Math.round((n / t) * 100)}%）`; });
+        else await instaApi({ action: 'addPhoto', data: await shrink(p.file), memo });
         ok++;
       }
-      ui.toast(`${ok}枚送りました。AI社員が下書きに使います`);
+      ui.toast(`${ok}つ送りました。AI社員が下書きに使います`);
       clear();
     } catch (err) {
-      ui.toast(`${ok}枚まで送れました。のこりは送れませんでした：${err.message}`);
+      ui.toast(`${ok}つまで送れました。のこりは送れませんでした：${err.message}`);
       picked.splice(0, ok).forEach((p) => URL.revokeObjectURL(p.url)); show();
     } finally { btn.disabled = false; btn.textContent = '送る'; }
   });
