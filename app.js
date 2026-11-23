@@ -467,7 +467,7 @@ const MENU = [
   { tab: 'cup', en: 'TOURNAMENT', name: '大会（SPORT CUP）', desc: '要項・リーグ表・タイムスケジュール・掲示用・優秀選手賞・審判カードを、まとめてPDFに。' },
   { tab: 'tm', en: 'TRAINING MATCH', name: 'TM（練習試合）', desc: '相手・日にち・会場を入れるだけで、TMのお知らせがPDFで完成。' },
   { tab: 'invite', en: 'INVITATION', name: 'お誘い（LINE）', desc: '大会・TMのお誘いの文を、日にちや学年を選ぶだけで。たくさんの相手にLINEで送る。' },
-  { tab: 'insta', en: 'INSTAGRAM', name: 'Instagram', desc: '練習の様子や体験の募集の、投稿文と画像をつくる。' },
+  { tab: 'insta', en: 'INSTAGRAM', name: 'Instagram', desc: 'AI社員が作るインスタの下書き。自分で1本作ることもできる。' },
   { tab: 'kaikei', en: 'ACCOUNTING', name: '会計', desc: '立替の入力と、返金の一覧・チェック。' },
   { tab: 'nittei', en: 'SCHEDULE', name: '日程', desc: '日にちを選んで「いつものセット」を押すだけで、Googleカレンダーに練習の予定が入る。' },
 ];

@@ -476,3 +476,20 @@ body.is-home main { padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
   .nt-set-btn b { font-size: 15px; }
   .nt-set-btn small { font-size: 12px; gap: 4px; }
 }
+.ig-lead { margin: 0 0 12px; }
+.ig-types-2 { grid-template-columns: 1fr 1fr; }
+.ig-inputs { margin: 14px 0 10px; }
+.ig-stage canvas { width: min(100%, 432px); height: auto; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+/* インスタ：AI社員の下書き */
+.ig-pass { display: flex; gap: 8px; margin-top: 8px; }
+.ig-pass input { flex: 1; min-width: 0; }
+.ig-refresh { border: none; background: none; color: var(--main); font-size: 20px; cursor: pointer; margin-left: auto; }
+#ig-drafts h2 { display: flex; align-items: center; }
+.ig-draft { border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-top: 12px; background: var(--white); }
+.ig-draft-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.ig-draft-head small { color: var(--muted); }
+.ig-draft-imgs { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; }
+.ig-draft-imgs img { width: min(78%, 320px); flex: none; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 10px; scroll-snap-align: start; }
+.ig-draft-cap { min-height: 160px; margin-top: 10px; line-height: 1.6; }
+.ig-manual > summary { cursor: pointer; font-weight: bold; color: var(--main-deep); }
+.ig-manual[open] > summary { margin-bottom: 12px; }
