@@ -1,7 +1,7 @@
 // SPORT AI事務局：日程タブ
 // 日にちを選んで「いつものセット」を押す → Googleカレンダー（SPORTの活動予定）に、いつもの件名・終日・学年の色で入る。
 // Googleの側：gas/nittei/Code.gs。この端末に残すのは、合言葉（「覚えておく」のとき）だけ。
-import { api, apiUrl, GRADES, COLOR_CSS, PLACES, normPlace, parseTitle, titleOf, colorOf, gradeLabel, splitItems, withSundayKids, withU15, shortSlotItems, guessPreset, isShortYodoiko, dayInfo, cupOf, cupTimes, dropBusy, fitsItems, planTM, matchCounts, matchDays, tmSlotsOf, TM_GRADES, coachLineText, lineUrl, ymd, parseYmd, mdw, pad } from './lib/nittei.js';
+import { api, apiUrl, GRADES, COLOR_CSS, PLACES, normPlace, parseTitle, titleOf, colorOf, gradeLabel, splitItems, withSundayKids, withU15, shortSlotItems, guessPreset, isShortYodoiko, dayInfo, cupOf, cupTimes, dropBusy, fitsItems, planTM, matchCounts, matchDays, tmSlotsOf, TM_GRADES, coachLineText, monthMatches, lineUrl, ymd, parseYmd, mdw, pad } from './lib/nittei.js';
 import { timeField } from './lib/time-input.js';
 import { teamField, bindPickers, rememberTeam } from './lib/team-memory.js';
 
@@ -552,9 +552,39 @@ export function renderNittei(host, ui) {
       <div class="btn-row">
         <a class="btn btn-line" id="nt-line-send" href="${esc(lineUrl(text))}" target="_blank" rel="noopener">LINEでコーチ担当に送る</a>
         <button class="btn btn-sub" data-act="lineCopy">文をコピー</button>
+        <button class="btn btn-sub" data-act="toInvite">💬 これからあたる日程をお誘いタブに入れる</button>
         ${S.line && S.line.month === S.month ? '<button class="btn btn-sub btn-small" data-act="lineReset">文を作りなおす</button>' : ''}
       </div>
       <p class="hint">「これからあたる日程」は、TM予定・相手の書いていないTM・スポルト杯の日です。LINEで送り先のグループを選んでください。パソコンでは「文をコピー」してLINEに貼りつけてください。</p>`;
+  }
+  /**
+   * 「これからあたる日程」を、お誘いタブに入れる（2026年11月23日 本人の希望）
+   * 学年ごとに1件。スポルト杯の会場は、その日の取れた枠の場所。もうお誘いタブにある（同じ種類・日にち・学年）ものは足さない。
+   * お誘いタブの、日にちの入っていない空の1件は消す。入れたらお誘いタブを開く
+   */
+  async function toInvite() {
+    const { fromSchedule } = await import('./lib/invite.js');
+    const KEY_INV = 'sport-ai:invite:v1';
+    let st = null;
+    try { st = JSON.parse(localStorage.getItem(KEY_INV) || 'null'); } catch { /* なし */ }
+    st = st || {};
+    const items = (st.items || []).filter((x) => x.date);
+    const have = new Set(items.map((x) => `${x.kind}|${x.date}|${x.grade}`));
+    let added = 0;
+    for (const x of monthMatches(allEvents(), S.month, ymd(new Date())).filter((m) => m.need)) {
+      const slot = (S.slots || []).find((s) => s.date === x.date);
+      const place = x.place || (x.kind === 'cup' && slot ? normPlace(slot.place) : '');
+      for (const g of x.grades.filter((g) => /^\d$/.test(g) || g === 'KIDs')) {
+        const it = fromSchedule({ kind: x.kind, grade: g, date: x.date, start: x.start, end: x.endTime, place });
+        const k = `${it.kind}|${it.date}|${it.grade}`;
+        if (have.has(k)) continue;
+        have.add(k); items.push(it); added++;
+      }
+    }
+    if (!added) { ui.toast('お誘いタブに入れる日程はありません（もう入っているか、これからあたる日程がありません）'); return; }
+    try { localStorage.setItem(KEY_INV, JSON.stringify({ ...st, items })); } catch { ui.toast('この端末に保存できませんでした'); return; }
+    ui.toast(`${added}件をお誘いタブに入れました。時間・会場・人数を見てから送ってください`);
+    document.querySelector('#tabs [data-tab="invite"]')?.click();
   }
   async function copyLine() {
     const text = lineText();
@@ -618,6 +648,7 @@ export function renderNittei(host, ui) {
     else if (a === 'cancelEdit') { S.edit = null; drawList(); }
     else if (a === 'saveEdit') saveEdit();
     else if (a === 'lineCopy') copyLine();
+    else if (a === 'toInvite') toInvite();
     else if (a === 'lineReset') { S.line = null; drawLine(); }
     else if (a === 'egrade') {
       const g = b.dataset.g, list = S.edit.grades;
