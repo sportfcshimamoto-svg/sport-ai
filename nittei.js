@@ -140,9 +140,13 @@ export function renderNittei(host, ui) {
       days: matchDays(evs, true),
     });
   }
-  /** KIDsを日曜から前の土曜に移す日：スポルト杯の日曜、1年生がTM・大会などの日曜（土曜も1年の試合なら移さない）、ピンクの枠がない日曜（2026年11月23日 本人） */
+  /**
+   * KIDsを日曜から前の土曜に移す日（2026年11月23日 本人「KIDsは、できる限り1年生といっしょに練習したい」）
+   * - 1年生がTM・大会・カップ戦・スポルト杯などの日曜（土曜も1年の試合なら移さない）。ほかの学年のスポルト杯の日曜は移さない（練習の時間に合わせる）
+   * - ピンクの枠がない日曜
+   */
   function kidsMoveDays() {
-    const out = cupDays();
+    const out = new Set();
     if (S.slots) {
       const has = new Set(S.slots.map((s) => s.date));
       const [y, m] = S.month.split('-').map(Number);
@@ -154,6 +158,9 @@ export function renderNittei(host, ui) {
     // ただし、その土曜にも1年生の試合があれば日曜のまま。土曜にピンクの枠がないときも日曜のまま（2026年11月23日 本人）
     const ones = new Set(matchDays(allEvents())['1']);
     for (const [k, list] of tmPlan()) if (list.some((x) => x.grade === '1')) ones.add(k.split('|')[0]);
+    // スポルト杯：1年の杯の日と、学年のわからない杯の日
+    (S.info?.cups || []).forEach((c) => { if (!c.grade || String(c.grade) === '1') ones.add(c.date); });
+    allEvents().forEach((e) => { const c = cupOf(e.title); if (c && !c.grades.length) daysOfEv(e).forEach((d) => ones.add(d)); });
     const satSlots = S.slots ? new Set(S.slots.map((s) => s.date)) : null;
     for (const date of ones) {
       const d = parseYmd(date);
@@ -409,7 +416,7 @@ export function renderNittei(host, ui) {
     const today = ymd(new Date());
     const list = S.info.cups || [];
     return `<section class="card">
-      <h2><span class="num">⚙</span>スポルトカップ <small class="nt-sub">年度はじめに1回。カレンダーに「SPORT杯 ○年 時間」が入ります。日曜がカップの日は、KIDsを前の土曜日に入れます</small></h2>
+      <h2><span class="num">⚙</span>スポルトカップ <small class="nt-sub">年度はじめに1回。カレンダーに「SPORT杯 ○年 時間」が入ります。日曜が1年生のカップの日は、KIDsを前の土曜日に入れます</small></h2>
       ${list.length ? list.map((c) => `<div class="nt-ev ${c.date < today ? 'nt-past' : ''}"><i style="background:${COLOR_CSS[colorOf([c.grade])] || '#999'}"></i><span><b>${esc(mdw(c.date))}</b> <small>${esc(c.date.slice(0, 4))}年</small> ${esc(cupTitle(c))}${c.memo ? ` <small>${esc(c.memo)}</small>` : ''}</span><button class="btn btn-sub btn-small" data-act="delCup" data-date="${esc(c.date)}" data-grade="${esc(c.grade || '')}" data-busy>✕</button></div>`).join('')
         : '<p class="hint">まだ入っていません。</p>'}
       <div class="grid nt-cup-add">
