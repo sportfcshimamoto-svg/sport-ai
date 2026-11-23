@@ -181,6 +181,16 @@ async function renderDrafts(box, ui) {
   }
   const canShare = !!(navigator.canShare && navigator.share);
   box.innerHTML = `<h2>📥 AI社員の下書き <button type="button" class="ig-refresh" id="ig-reload" aria-label="新しくする">↻</button></h2>
+    <div class="ig-upload">
+      <label class="drop">📷 写真を送る <small>（LINEのアルバムから保存した写真など。AI社員が使います）</small><input type="file" id="ig-up" accept="image/*" multiple></label>
+      <div id="ig-up-panel" hidden>
+        <div class="ig-thumbs" id="ig-up-thumbs"></div>
+        <label for="ig-up-memo">ひとことメモ <small>（なくてもOK）</small></label>
+        <textarea id="ig-up-memo" placeholder="例：3年生。試合の準備を自分たちでやっていた。相手チームのコーチにほめられた。"></textarea>
+        <p class="hint">子どもの名前は書かないでください。顔が大きく写った写真は、AI社員が使わないようにしています。</p>
+        <div class="btn-row"><button class="btn btn-main" id="ig-up-send">送る</button><button class="btn btn-sub" id="ig-up-cancel">やめる</button></div>
+      </div>
+    </div>
     ${drafts.length ? '' : '<p class="hint">新しい下書きはまだありません。火・金の朝にAI社員が作ります。</p>'}
     ${drafts.map((d) => `<article class="ig-draft" data-id="${esc(d.id)}">
       <div class="ig-draft-head"><b>${esc(d.title || '下書き')}</b><small>${esc((d.created || '').slice(5, 10).replace('-', '/'))}</small></div>
@@ -193,6 +203,7 @@ async function renderDrafts(box, ui) {
       </div>
     </article>`).join('')}`;
   box.querySelector('#ig-reload').addEventListener('click', () => { loaded.clear(); renderDrafts(box, ui); });
+  setupUpload(box, ui);
 
   for (const card of box.querySelectorAll('.ig-draft')) {
     const id = card.dataset.id;
@@ -230,4 +241,60 @@ async function renderDrafts(box, ui) {
       } catch (err) { card.querySelector('[data-imgs]').innerHTML = `<span class="notice err">${esc(err.message)}</span>`; }
     })();
   }
+}
+
+// ---------- スマホから写真を送る（Googleの「写真入れ」へ。PCのAI社員が取りこむ） ----------
+const MAX_SIDE = 1600;
+async function shrink(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error(`${file.name} は読み込めませんでした`)); i.src = url; });
+    const k = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    const blob = await new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('写真を小さくできませんでした'))), 'image/jpeg', 0.85));
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  } finally { URL.revokeObjectURL(url); }
+}
+
+function setupUpload(box, ui) {
+  let picked = [];   // { file, url }
+  const panel = box.querySelector('#ig-up-panel');
+  const show = () => {
+    panel.hidden = !picked.length;
+    box.querySelector('#ig-up-thumbs').innerHTML = picked.map((p, i) => `<div class="ig-thumb"><img src="${p.url}" alt="${i + 1}枚目"><button type="button" class="ig-x" data-updel="${i}" aria-label="${i + 1}枚目を外す">✕</button></div>`).join('');
+  };
+  const clear = () => { picked.forEach((p) => URL.revokeObjectURL(p.url)); picked = []; box.querySelector('#ig-up-memo').value = ''; show(); };
+  box.querySelector('#ig-up').addEventListener('change', (e) => {
+    for (const f of e.target.files) picked.push({ file: f, url: URL.createObjectURL(f) });
+    e.target.value = ''; show();
+  });
+  box.querySelector('#ig-up-thumbs').addEventListener('click', (e) => {
+    const d = e.target.closest('[data-updel]');
+    if (d) { const [p] = picked.splice(+d.dataset.updel, 1); URL.revokeObjectURL(p.url); show(); }
+  });
+  box.querySelector('#ig-up-cancel').addEventListener('click', clear);
+  const btn = box.querySelector('#ig-up-send');
+  btn.addEventListener('click', async () => {
+    if (!picked.length) return;
+    const memo = box.querySelector('#ig-up-memo').value.trim();
+    btn.disabled = true;
+    let ok = 0;
+    try {
+      for (const p of picked) {
+        btn.textContent = `送っています… ${ok + 1}/${picked.length}`;
+        await instaApi({ action: 'addPhoto', data: await shrink(p.file), memo });
+        ok++;
+      }
+      ui.toast(`${ok}枚送りました。AI社員が下書きに使います`);
+      clear();
+    } catch (err) {
+      ui.toast(`${ok}枚まで送れました。のこりは送れませんでした：${err.message}`);
+      picked.splice(0, ok).forEach((p) => URL.revokeObjectURL(p.url)); show();
+    } finally { btn.disabled = false; btn.textContent = '送る'; }
+  });
 }

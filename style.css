@@ -493,3 +493,7 @@ body.is-home main { padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
 .ig-draft-cap { min-height: 160px; margin-top: 10px; line-height: 1.6; }
 .ig-manual > summary { cursor: pointer; font-weight: bold; color: var(--main-deep); }
 .ig-manual[open] > summary { margin-bottom: 12px; }
+.ig-upload { margin: 4px 0 8px; }
+.ig-upload .drop small { font-weight: normal; }
+#ig-up-panel { margin-top: 10px; }
+#ig-up-memo { min-height: 70px; }
