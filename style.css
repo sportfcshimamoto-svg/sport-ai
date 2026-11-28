@@ -502,3 +502,18 @@ body.is-home main { padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
 .ig-upload .drop small { font-weight: normal; }
 #ig-up-panel { margin-top: 10px; }
 #ig-up-memo { min-height: 70px; }
+
+/* ---------- トップ：Club Secretary（PCのAI社員）のお知らせ ---------- */
+.cs-wrap .sec-head { margin-top: 48px; }
+.cs-list { display: grid; gap: 12px; }
+.cs-item { display: flex; align-items: center; gap: 16px; background: var(--white); border: 1px solid var(--sky-line); border-left: 4px solid var(--sky-1); padding: 14px 16px; }
+.cs-item.cs-soon { border-left-color: #f0a400; }
+.cs-item.cs-late { border-left-color: #d63a3a; }
+.cs-body { flex: 1; min-width: 0; }
+.cs-body b { color: var(--ink); font-size: 15px; }
+.cs-body p { margin: 6px 0 0; font-size: 13px; color: #5a6b80; line-height: 1.7; overflow-wrap: anywhere; }
+.cs-tag { display: inline-block; margin-right: 8px; padding: 1px 8px; font-size: 11px; font-weight: bold; color: var(--white); background: #f0a400; vertical-align: 2px; }
+.cs-late .cs-tag { background: #d63a3a; }
+.cs-done { flex: none; white-space: nowrap; }
+.cs-none { margin: 0; font-size: 13px; color: #5a6b80; }
+@media (max-width: 640px) { .cs-item { flex-direction: column; align-items: stretch; } }

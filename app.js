@@ -517,6 +517,8 @@ function renderHome() {
 
   <div class="tk" aria-hidden="true"><div class="tk-row">${tickRow}${tickRow}</div></div>
 
+  <section class="wrap cs-wrap" id="cs" hidden></section>
+
   <section class="wrap mx-wrap">
     <div class="sec-head"><span class="sec-en">MENU</span><span class="sec-ja">きょうの仕事をえらぶ</span><span class="sec-line"></span></div>
     <div class="mx-grid">
@@ -542,6 +544,47 @@ function renderHome() {
     <p class="ft">SPORT FC SHIMAMOTO ／ AI事務局</p>
   </section>`;
   $('#app').querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.go)));
+  loadSecretary();
+}
+
+// ---------- Club Secretary（PCのAI社員）のお知らせ ----------
+// 2026年11月28日 本人の希望：SPORT CUPの要項を体育協会へ出す2か月前までに、アプリのトップで知らせる。
+// お知らせの置き場所はインスタの下書きと同じGoogleの側（gas/insta/Code.gs）。合言葉もInstagramタブで入れたものを使う。
+async function loadSecretary(list) {
+  const box = $('#cs');
+  if (!box) return;
+  let api;
+  try { api = await import('./lib/insta-api.js'); } catch { return; }
+  if (!api.savedPass()) return;   // 合言葉を入れていない端末（コーチなど）には出さない
+  if (!list) {
+    try { list = (await api.instaApi({ action: 'notices' })).notices || []; } catch { return; }
+  }
+  if (!$('#cs')) return;   // 待っているあいだに別のタブへ移った
+  const open = list.filter((n) => !n.done);
+  box.hidden = false;
+  box.innerHTML = `
+    <div class="sec-head"><span class="sec-en">CLUB SECRETARY</span><span class="sec-ja">今日やること</span><span class="sec-line"></span></div>
+    ${open.length ? `<div class="cs-list">${open.map((n) => `
+      <div class="cs-item cs-${esc(n.level || 'normal')}">
+        <div class="cs-body">
+          ${n.level === 'late' ? '<span class="cs-tag">しめきりすぎ</span>' : n.level === 'soon' ? '<span class="cs-tag">もうすぐ</span>' : ''}
+          <b>${esc(n.title)}</b>
+          <p>${esc(n.body)}</p>
+        </div>
+        ${n.button ? `<button class="btn btn-main cs-done" data-id="${esc(n.id)}">${esc(n.button)}</button>` : ''}
+      </div>`).join('')}</div>`
+      : '<p class="cs-none">いま、やることはありません。</p>'}`;
+  box.querySelectorAll('.cs-done').forEach((b) => b.addEventListener('click', async () => {
+    b.disabled = true;
+    try {
+      const out = await api.instaApi({ action: 'noticeDone', id: b.dataset.id });
+      toast('おつかれさまです。予定表に「済」と書いておきます');
+      loadSecretary(out.notices || []);
+    } catch (err) {
+      b.disabled = false;
+      toast(err.message);
+    }
+  }));
 }
 
 $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b && !b.disabled) showTab(b.dataset.tab); });
